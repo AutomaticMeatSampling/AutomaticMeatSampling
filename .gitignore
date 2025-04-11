@@ -1,0 +1,8 @@
+# Model Checkpoint (too big)
+sam_vit_h_4b8939.pth
+
+# Don't include the virtual environment
+myenv/
+
+# .pyc files
+*.pyc
