@@ -11,8 +11,8 @@ int sensorValue = 0;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  pinmode(voltageOut, OUTPUT)
-  pinmode(sensorPin, INPUT)
+  pinMode(voltageOut, OUTPUT);
+  pinMode(sensorPin, INPUT);
 }
 
 void loop() {
@@ -38,7 +38,7 @@ void disconnectCheck(){
       delay(100);
     }
   }
-  //digitalWrite(voltageOut, LOW);
+  digitalWrite(voltageOut, LOW);
   Serial.println("DISCONNECTED");  // let python code know that the electrical contacts have disconnected
 
 }
