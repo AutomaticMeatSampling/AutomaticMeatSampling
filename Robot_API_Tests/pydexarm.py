@@ -7,6 +7,14 @@ class Dexarm:
     """ Python class for Dexarm
     """
 
+    #system maximum speed: 500mm/s or 30000 mm/min
+
+    y_home = 300;#DO NOT CHANGE
+
+    cup_x = -314.04
+    cup_y = 192.18
+    cup_z = 130.3
+
     def __init__(self, port):
         """
         Args:
@@ -134,52 +142,7 @@ class Dexarm:
             feedrate (int): sets the feedrate for all subsequent moves
         """
         Dexarm.move_to(self, x=x, y=y, z=z, feedrate=feedrate, mode="G0", wait=wait)
-
-
-    def move_inward_to_target(self, x_target, y_target, z_height=None, direction='CW', speed=2000):
-        """
-        Move the arm in a smooth circular path (true arc using G2/G3)
-        around the center (0,0) to reach the target position.
-
-        Args:
-            x_target (float): target X position (mm)
-            y_target (float): target Y position (mm)
-            z_height (float): fixed Z height (mm)
-            direction (str): 'CW' for clockwise or 'CCW' for counterclockwise
-            speed (float): feed rate in mm/min
-        """
-
-        # Center of rotation
-        center_x, center_y = 0, 0
-
-        # Get current position
-        x_curr, y_curr, z_curr, *_ = self.get_current_position()
-
-        # Compute radius and angles
-        radius_start = math.sqrt(x_curr**2 + y_curr**2)
-        radius_end = math.sqrt(x_target**2 + y_target**2)
-
-        # Keep z constant
-        z = z_height
-
-        # Choose G2 or G3
-        gcode_type = 'G2' if direction.upper() == 'CW' else 'G3'
-
-        # I, J = relative offset from current position to circle center
-        I = center_x - x_curr
-        J = center_y - y_curr
-
-        # --- Step 1: Circular move around current radius ---
-        # This moves along the circle from current point to the point aligned with target
-        cmd_arc = f"{gcode_type} X{x_target:.2f} Y{y_target:.2f} I{I:.2f} J{J:.2f} F{speed}\r"
-        self._send_cmd(cmd_arc)
-
-        # --- Step 2: Move radially inward/outward to final radius ---
-        if abs(radius_start - radius_end) > 1e-3 and (z != None):
-            cmd_radial = f"G1 X{x_target:.2f} Y{y_target:.2f} Z{z:.2f} F{speed}\r"
-            time.sleep(0.1)
-            self._send_cmd(cmd_radial)
-
+    
     def get_current_position(self):
         """
         Get the current position
@@ -321,3 +284,56 @@ class Dexarm:
         Release the serial port.
         """
         self.ser.close()
+
+    ###################### 
+    # CUSTOM FUNCTIONS
+    ######################
+
+    def move_inward_to_target(self, x_target, y_target, z_height=None, direction='CW', speed=4000):
+        """
+        Move the arm in a smooth circular path (true arc using G2/G3)
+        around the center (0,0) to reach the target position.
+
+        Args:
+            x_target (float): target X position (mm)
+            y_target (float): target Y position (mm)
+            z_height (float): fixed Z height (mm)
+            direction (str): 'CW' for clockwise or 'CCW' for counterclockwise
+            speed (float): feed rate in mm/min
+        """
+
+        # Center of rotation
+        center_x, center_y = 0, 5
+
+        # Get current position
+        x_curr, y_curr, z_curr, *_ = self.get_current_position()
+
+        # Compute radius and angles
+        radius_start = math.sqrt(x_curr**2 + y_curr**2)
+        radius_end = math.sqrt(x_target**2 + y_target**2)
+
+        # Keep z constant
+        z = z_height
+
+        # Choose G2 or G3
+        gcode_type = 'G2' if direction.upper() == 'CW' else 'G3'
+
+        # I, J = relative offset from current position to circle center
+        I = center_x - x_curr
+        J = center_y - y_curr
+
+        # --- Step 1: Circular move around current radius ---
+        # This moves along the circle from current point to the point aligned with target
+        cmd_arc = f"{gcode_type} X{x_target:.2f} Y{y_target:.2f} I{I:.2f} J{J:.2f} F{speed}\r"
+        self._send_cmd(cmd_arc)
+
+        # --- Step 2: Move radially inward/outward to final radius ---
+        if abs(radius_start - radius_end) > 1e-3 and (z != None):
+            cmd_radial = f"G1 X{x_target:.2f} Y{y_target:.2f} Z{z:.2f} F{speed}\r"
+            time.sleep(0.1)
+            self._send_cmd(cmd_radial)
+
+    def move_to_dispose_cup(self):
+        self.go_home()
+        self.fast_move_to(0, self.y_home, self.cup_z)
+        self.move_inward_to_target(self.cup_x, self.cup_y, self.cup_z, 'CCW') #tell to move to z first
