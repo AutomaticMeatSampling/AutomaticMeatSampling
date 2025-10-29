@@ -8,7 +8,7 @@ import re
 def id_serial_ports():
     # Identify COM ports for microcontroller and Rotrics arm
     returned_txt = ''
-    msg_list = ['R', 'M']
+    msg_list = ['R', 'M1112']
     ser_micro_find = None
     dexarm = None
     ports = serial.tools.list_ports.comports()
@@ -61,9 +61,9 @@ def move_down(ser_micro, dexarm):
     received_msg = ''
     ser_micro.flushInput()
     ser_micro.write(bytes('D', 'utf-8'))
-    move_step = -0.2
+    move_step = 0.1
     print('Checking Connection')
-    z_pos = 0
+    z_pos = 40
     while connect:
         received_msg = ser_micro.readline()
         ser_micro.flushInput()
@@ -78,9 +78,14 @@ def move_down(ser_micro, dexarm):
 
 # Main
 if __name__ == '__main__':
-    ser_micro, dexarm = id_serial_ports()
-    ser_micro.open()
-
-    move_down(ser_micro, dexarm)  # move dexarm down until microcontroller signals broken contact
+    # ser_micro, dexarm = id_serial_ports()
+    ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
+    dexarm = Dexarm(port="COM6")
+    # ser_micro.open()
+    # dexarm.go_home()
+    for i in range(0, 10):
+        dexarm.move_to(None, None, 40)
+        move_down(ser_micro, dexarm)  # move dexarm down until microcontroller signals broken contact
+        time.sleep(5)
 
     ser_close(ser_micro, dexarm)
