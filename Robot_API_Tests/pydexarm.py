@@ -334,6 +334,57 @@ class Dexarm:
             self._send_cmd(cmd_radial)
 
     def move_to_dispose_cup(self):
-        self.go_home()
+        # Move to dispose cup position
+
+        self.go_home()  # Probably need to update/remove this
         self.fast_move_to(0, self.y_home, self.cup_z)
         self.move_inward_to_target(self.cup_x, self.cup_y, self.cup_z, 'CCW') #tell to move to z first
+
+    def move_to_drop_sample(self, sample_num):
+        # Move to grid (1 row x 3 columns) of vials. Firt vial is at top left
+
+        max_num = 3
+
+        vial_pos = {
+            1: (0, 0), # TODO: need to find actual values
+            2: (0, 0),
+            3: (0, 0)
+        }
+
+        if sample_num < 1 or sample_num > 3:
+            raise ValueError("sample_num must be between 1 and 3")
+        
+        pipette_height = 0
+
+    def move_to_pipette_tip(self, pipette_num):
+        # Move to grid (2 rows X 3 columns) of pipettes. First pipette is at top left:
+        
+        pipette_pos = {
+            1: (291.76,  159.42),
+            2: (0, 0), # TODO: need to find actual values
+            3: (0, 0),
+            4: (0, 0),
+            5: (0, 0),
+            6: (0, 0)
+        }
+
+        if pipette_num < 1 or pipette_num > 6:
+            raise ValueError("pipette_num must be between 1 and 6")
+        pipette_height = -14
+        self.move_inward_to_target(pipette_pos[pipette_num][0], pipette_pos[pipette_num][1], None)
+        self.fast_move_to(None, None, pipette_height)
+        time.sleep(2)
+        self.fast_move_to(None, None, 50)
+
+    def toggle_gpio_pin(self, pin_number):
+        # TODO: figure out what are the pin numbers corresponding to I/O pins (USART1_TX?? and USART1_RX??)
+        # State = 0 or 255?
+        # Toggle pin to HIGH
+        # M1 Mode = OUTPUT
+        cmd_high = f"M42 P{pin_number} S{255} M1\r"
+        self._send_cmd(cmd_high)
+
+        time.sleep(1)
+
+        cmd_low = f"M42 P{pin_number} S{0} M1\r"
+        self._send_cmd(cmd_low)
