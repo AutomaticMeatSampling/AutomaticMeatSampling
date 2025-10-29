@@ -99,14 +99,14 @@ def test_prompt(path="images/sample6.jpg", checkpoint="sam_vit_b_01ec64.pth", fo
         plt.imshow(image)
         show_mask(mask, plt.gca())
         show_points(input_point, input_label, plt.gca())
-        plt.title(f"Mask {i+1}, Score: {score:.3f}", fontsize=18)
+        plt.title(f"Mask {i+1}, Score: {score:.3f}, # of Pixels: {np.sum(mask)} ", fontsize=18)
         plt.axis('off')
         if show:
             plt.show()
 
 
     # Save best mask as black mask and white background in images/masks/ folder as last part of path befoe "/" + "_output.png"
-    # Best = smallest mask size
+    # Option 1: Best = smallest mask size
     best_mask_index = np.argmin([np.sum(mask) for mask in masks])
     print("Best mask index: ", best_mask_index)
     best_mask = masks[best_mask_index].astype(np.uint8) * 255
@@ -115,7 +115,17 @@ def test_prompt(path="images/sample6.jpg", checkpoint="sam_vit_b_01ec64.pth", fo
     print(output_path)
     cv2.imwrite("images/masks/" + output_path, best_mask)
 
-    return best_mask
+    # Save all masks to temp/output_ld_mask_{i}.png where i is the rank (1 = best, 2 = second best, 3 = third best)
+    for i, mask in enumerate(masks):
+        ranked_mask = mask.astype(np.uint8) * 255
+        cv2.imwrite(f"temp/output_ld_mask_{i+1}.png", ranked_mask)
+        print(f"Saved mask {i+1} with Score: {scores[i]:.3f}, # of Pixels: {np.sum(mask)}")
+
+    # Option 2: Set best mask to mask with highest score
+    # best_mask_index = np.argmax(scores)
+    # best_mask = masks[best_mask_index].astype(np.uint8) * 255
+    # Overwrite previous best mask
+    # cv2.imwrite("images/masks/" + "score_based_" + output_path, best_mask)
 
 
 # Generate masks for entire image:
@@ -324,7 +334,7 @@ def normalize_brightness(img, mask, target_mean=128):
     return img_norm
 
 
-def otsu_threshold_and_clean(enhanced_img, mask, min_cc_size=50):
+def otsu_threshold_and_clean(enhanced_img, enhanced_muscle_img, mask, min_marbling_cc_size=50):
     """
     Description: Uses global otsu thresholding to find mask for marbling. Removes any small connected components with size < min_cc_size.
 
@@ -340,14 +350,26 @@ def otsu_threshold_and_clean(enhanced_img, mask, min_cc_size=50):
     _, thresholded_marble_mask = cv2.threshold(enhanced_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     # Remove small flecks with connected Components
+    # TODO: Fine tune min_marbling_cc_size for final images with specific robot camera resolution
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(thresholded_marble_mask, connectivity=8)
     sizes = stats[1:, -1]
     new_thresholded_marbling_mask = np.zeros_like(thresholded_marble_mask)
     for i, size in enumerate(sizes):
-        if size > min_cc_size:
+        if size > min_marbling_cc_size:
             new_thresholded_marbling_mask[labels == i + 1] = 255
 
-    return new_thresholded_marbling_mask
+
+    # Invert threshold marbling mask to get muscle mask
+    _, thresholded_marble_mask2 = cv2.threshold(enhanced_muscle_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    new_thresholded_muscle_mask = cv2.bitwise_and(mask, cv2.bitwise_not(thresholded_marble_mask2))
+
+    cv2.imwrite("temp/output_marbling_threshold.png", new_thresholded_muscle_mask)
+
+    # Expand the black parts (to avoid touching possible marbling points) or shrink white parts with erosion
+    # TODO: Fine tune for final images with specific robot camera resolution
+    cleaned_muscle_mask = cv2.erode(new_thresholded_muscle_mask, np.ones((3, 3), np.uint8), iterations=1)
+
+    return new_thresholded_marbling_mask, cleaned_muscle_mask
 
 def enhanced_contrast_grayscale(img, mask=None):
     """
@@ -437,7 +459,8 @@ def find_marbling(image_path, ld_mask):
     Returns:
         dict: Dictionary containing intermediate results and final marbling mask
     """
-    target_mean_brightness = 50
+    target_mean_brightness = 50 # TODO: FINE TUNE with real lighting situation
+    target_mean_brightness_muscle = 70 # TODO: FINE TUNE with real lighting situation
     # Step 1: Read image
     image = cv2.imread(image_path)
 
@@ -449,18 +472,21 @@ def find_marbling(image_path, ld_mask):
 
     # Step 4: Normalize brightness
     img_norm = normalize_brightness(no_bkg, ld_mask, target_mean_brightness)
+    img_norm_muscle = normalize_brightness(no_bkg, ld_mask, target_mean_brightness_muscle)
 
     # Step 5: Convert to greyscale and enhance contrast
     enhanced = enhanced_contrast_grayscale(img_norm, ld_mask)
+    enhanced_muscle = enhanced_contrast_grayscale(img_norm_muscle, ld_mask)
 
     # Step 6: Otsu thresholding and clean small connected components
-    new_mask_marbling = otsu_threshold_and_clean(enhanced_img=enhanced, mask=ld_mask)
+    new_mask_marbling, new_mask_muscle = otsu_threshold_and_clean(enhanced_img=enhanced, enhanced_muscle_img=enhanced_muscle, mask=ld_mask)
     
 
     return {
         "no_bkg": no_bkg,
         "enhanced": enhanced,
         "final_marbling": new_mask_marbling,
+        "final_muscle": new_mask_muscle,
         "img_norm": img_norm
     }
 
@@ -489,11 +515,11 @@ def pre_processing_ld_mask(ld_mask, min_size=5000):
 
 
 if __name__ == "__main__":
-    sample_num = 1
+    sample_num = 6
     path = f"images/samples_green/sample{sample_num}_green.jpg"
     
-    marbling_only = False
-    show = False
+    marbling_only = True
+    show = True
     # test_prompt(path)
     # test_segment_tissue(path)
     # test_automated_generator(path)
@@ -502,6 +528,12 @@ if __name__ == "__main__":
     
         start = time.time()
         result, meat_mask, green_mask = remove_green_background(path, show=show)
+        # Save meat_mask to temp/output_meat_mask.png
+        cv2.imwrite(f"temp/output_meat_mask.png", meat_mask)
+        # Set all parts of orig image where meat_mask is 0 to white - but rn it shows up as blue instead of red fix it
+        result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+        cv2.imwrite(f"temp/output_no_green.png", result)
+
         print("Remove green background time taken: ", time.time() - start)
 
         start = time.time()
@@ -543,3 +575,5 @@ if __name__ == "__main__":
     
     final_muscle = cv2.bitwise_and(best_mask_ld, cv2.bitwise_not(final_marbling))
     cv2.imwrite(f"images/masks/sample{sample_num}_muscle_mask.png", final_muscle)
+
+    cv2.imwrite(f"images/masks/sample{sample_num}_muscle_mask_2.png", results["final_muscle"])
