@@ -341,7 +341,7 @@ class Dexarm:
         self.move_inward_to_target(self.cup_x, self.cup_y, self.cup_z, 'CCW') #tell to move to z first
 
     def move_to_drop_sample(self, sample_num):
-        # Move to grid (1 row x 3 columns) of vials. Firt vial is at top left
+        # Move to grid (1 row x 3 columns) of vials. First vial is at top left
 
         max_num = 3
 
@@ -388,3 +388,37 @@ class Dexarm:
 
         cmd_low = f"M42 P{pin_number} S{0} M1\r"
         self._send_cmd(cmd_low)
+
+    def move_down_meat(self, ser_micro):
+        """
+                Move the pipette down (z-direction) until microcontroller signals it
+                to stop.
+
+                Args:
+                    ser_micro (serial object): Serial connection to microcontroller
+                """
+        connect = True
+        received_msg = ''  # Microcontroller will send a message when it detects disconnection
+        step_size = 0.1  # step size at which robot moves down in z-direction
+        max_height = 60  # maximum height of a steak [mm]
+        z_pos = max_height  # tracking z position [mm]
+
+        # Quickly move to max height allowed above steak
+        self.fast_move_to(None, None, max_height)
+
+        # Ask microcontroller to start tracking contact detection
+        ser_micro.flushInput()
+        ser_micro.write(bytes('D', 'utf-8'))
+
+        # Check contact detection while moving robot down by step_size
+        while connect:
+            received_msg = ser_micro.readline()
+            ser_micro.flushInput()
+            self.move_to(None, None, z=z_pos)
+            z_pos = z_pos - step_size
+            if received_msg == b'DISCONNECTED\r\n':
+                connect = False
+                print('Disconnected!')
+                time.sleep(5)  # Pause at position for 5 seconds
+
+

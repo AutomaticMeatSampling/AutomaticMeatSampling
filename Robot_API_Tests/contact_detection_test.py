@@ -2,13 +2,11 @@ from pydexarm import Dexarm
 import serial
 import serial.tools.list_ports
 import time
-import re
-
 
 def id_serial_ports():
     # Identify COM ports for microcontroller and Rotrics arm
     returned_txt = ''
-    msg_list = ['R', 'M1112']
+    msg_list = ['R\r', 'M1112\r']
     ser_micro_find = None
     dexarm = None
     ports = serial.tools.list_ports.comports()
@@ -30,7 +28,8 @@ def id_serial_ports():
                     print(f'Found microcontroller at {port.device}')
                     found_port = True
                     ser.close()
-                elif returned_txt == 'ok':
+                elif returned_txt == b'M1112\r\n':
+                    ser.close()
                     dexarm = Dexarm(port=port.device)
                     print(f'Found Rotrics Dexarm at {port.device}')
                     found_port = True
@@ -56,14 +55,14 @@ def ser_close(ser_micro, dexarm):
             print(f'Error closing port: {e}')
 
 
-def move_down(ser_micro, dexarm):
+def move_down(ser_micro, dexarm, z_pos, step_size):
     connect = True
     received_msg = ''
     ser_micro.flushInput()
     ser_micro.write(bytes('D', 'utf-8'))
+    dexarm.move_to(None, None, z_pos, mode='G0')
     move_step = 0.1
     print('Checking Connection')
-    z_pos = 40
     while connect:
         received_msg = ser_micro.readline()
         ser_micro.flushInput()
@@ -78,14 +77,16 @@ def move_down(ser_micro, dexarm):
 
 # Main
 if __name__ == '__main__':
-    # ser_micro, dexarm = id_serial_ports()
-    ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
-    dexarm = Dexarm(port="COM6")
-    # ser_micro.open()
-    # dexarm.go_home()
-    for i in range(0, 10):
-        dexarm.move_to(None, None, 40)
-        move_down(ser_micro, dexarm)  # move dexarm down until microcontroller signals broken contact
-        time.sleep(5)
+    ser_micro, dexarm = id_serial_ports()
+    # ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
+    # dexarm = Dexarm(port="COM6")
+    ser_micro.open()
+
+    dexarm.move_down_meat(ser_micro)
+    # move_down(ser_micro, dexarm, z_home, step_size)
+    # for i in range(0, 10):
+    #    dexarm.move_to(None, None, 40)
+    #    move_down(ser_micro, dexarm)  # move dexarm down until microcontroller signals broken contact
+    #    time.sleep(5)
 
     ser_close(ser_micro, dexarm)
