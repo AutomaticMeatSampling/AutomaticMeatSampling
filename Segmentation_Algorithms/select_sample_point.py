@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 def get_sample_points(marbling_mask_img_path, muscle_mask_img_path, num_marbling_points, num_muscle_points):
     # Read binary masks
@@ -39,16 +40,16 @@ def get_sample_points(marbling_mask_img_path, muscle_mask_img_path, num_marbling
             selected_muscle_points.append(max_dist_point)
 
             # Update the muscle mask to exclude the selected point
-            cv2.circle(muscle_mask, (max_dist_point[1], max_dist_point[0]), radius=10, color=0, thickness=-1)
-            cv2.circle(marbling_mask, (max_dist_point[1], max_dist_point[0]), radius=10, color=0, thickness=-1)
+            cv2.circle(muscle_mask, (max_dist_point[1], max_dist_point[0]), radius=100, color=0, thickness=-1)
+            cv2.circle(marbling_mask, (max_dist_point[1], max_dist_point[0]), radius=100, color=0, thickness=-1)
 
            
             # UNCOMMENT BELOW TO SHOW INTERMEDIATE STEPS:
             # Display muscle_mask at this point
-            # plt.imshow(muscle_mask, cmap='gray')
-            # plt.axis("off")
-            # plt.title("Muscle Mask with Selected Point Blacked Out")
-            # plt.show()
+            plt.imshow(muscle_mask, cmap='gray')
+            plt.axis("off")
+            plt.title("Muscle Mask with Selected Point Blacked Out")
+            plt.show()
 
         elif (i % 2 == 1 and len(selected_marbling_points) < num_marbling_points) or (len(selected_muscle_points) == num_muscle_points):
             # Recompute the distance transform for the marbling mask
@@ -67,8 +68,8 @@ def get_sample_points(marbling_mask_img_path, muscle_mask_img_path, num_marbling
             selected_marbling_points.append(max_dist_point)
 
             # Update the marbling mask to exclude the selected point
-            cv2.circle(marbling_mask, (max_dist_point[1], max_dist_point[0]), radius=10, color=0, thickness=-1)
-            cv2.circle(muscle_mask, (max_dist_point[1], max_dist_point[0]), radius=10, color=0, thickness=-1)
+            cv2.circle(marbling_mask, (max_dist_point[1], max_dist_point[0]), radius=100, color=0, thickness=-1)
+            cv2.circle(muscle_mask, (max_dist_point[1], max_dist_point[0]), radius=100, color=0, thickness=-1)
 
             # UNCOMMENT BELOW TO SHOW INTERMEDIATE STEPS:
             # Display muscle_mask at this point
@@ -92,15 +93,28 @@ def get_sample_points(marbling_mask_img_path, muscle_mask_img_path, num_marbling
 
 if __name__ == "__main__":
     sample_id = 1
+    sample_side = "a" # "a/b" or "" for fake images
+    light_type = "both" # "both" or "" for fake images
+    sample_type = "real"
 
-    ld_mask_path = f"images/masks/sample{sample_id}_green_output.png"
-    orig_img_path = f"images/samples_green/sample{sample_id}_green.jpg"
+    if len(sys.argv) > 2:
+        sample_id = sys.argv[1]
+        sample_side = sys.argv[2]
+
+    if sample_type == "fake":
+        ld_mask_path = f"images/masks/sample{sample_id}_green_output.png"
+        orig_img_path = f"images/samples_green/sample{sample_id}_green.jpg"
+        muscle_mask_path = f"images/masks/sample{sample_id}_muscle_mask_2.png"
+        marbling_mask_path = f"images/masks/sample{sample_id}_marbling_mask.png"
+    else:
+        ld_mask_path = f"images/masks/sample{sample_id}{sample_side}_{light_type}_ld_mask.png"
+        orig_img_path = f"real_images/sample{sample_id}{sample_side}_{light_type}.png"
+        muscle_mask_path = f"images/masks/sample{sample_id}{sample_side}_{light_type}_muscle_mask_2.png"
+        marbling_mask_path = f"images/masks/sample{sample_id}{sample_side}_{light_type}_marbling_mask.png"
 
     num_muscle_pts = 2
-    muscle_mask_path = f"images/masks/sample{sample_id}_muscle_mask.png"
-
     num_marbling_pts = 2
-    marbling_mask_path = f"images/masks/sample{sample_id}_marbling_mask.png"
+    
 
     muscle_points, marbling_points = get_sample_points(marbling_mask_path, muscle_mask_path, num_marbling_pts, num_muscle_pts)
 

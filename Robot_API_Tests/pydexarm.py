@@ -11,9 +11,7 @@ class Dexarm:
 
     y_home = 300;#DO NOT CHANGE
 
-    cup_x = -314.04
-    cup_y = 192.18
-    cup_z = 130.3
+    
 
     def __init__(self, port):
         """
@@ -333,12 +331,17 @@ class Dexarm:
             time.sleep(0.1)
             self._send_cmd(cmd_radial)
 
-    def move_to_dispose_cup(self):
+    def step_6_move_to_dispose_cup(self):
         # Move to dispose cup position
+        cup_x = -211.67
+        cup_y = 294.75
+        cup_z = 130.3
 
-        self.go_home()  # Probably need to update/remove this
-        self.fast_move_to(0, self.y_home, self.cup_z)
-        self.move_inward_to_target(self.cup_x, self.cup_y, self.cup_z, 'CCW') #tell to move to z first
+        self.fast_move_to(None, None, cup_z)
+        self.move_inward_to_target(cup_x, cup_y, cup_z, 'CW') #tell to move to z first
+
+        # TODO: Add drop of code here:
+        time.sleep(5)
 
     def move_to_drop_sample(self, sample_num):
         # Move to grid (1 row x 3 columns) of vials. First vial is at top left
@@ -357,10 +360,10 @@ class Dexarm:
         pipette_height = 0
 
     def move_to_pipette_tip(self, pipette_num):
-        # Move to grid (2 rows X 3 columns) of pipettes. First pipette is at top left:
+        # Move to grid (3 rows X 2 columns) of pipettes. First pipette is at top left:
         
         pipette_pos = {
-            1: (291.76,  159.42),
+            1: (318.37, 177.74), # 1: (317.63, 175.58),
             2: (0, 0), # TODO: need to find actual values
             3: (0, 0),
             4: (0, 0),
@@ -370,23 +373,78 @@ class Dexarm:
 
         if pipette_num < 1 or pipette_num > 6:
             raise ValueError("pipette_num must be between 1 and 6")
-        pipette_height = -14
+        pipette_height = -18
         self.move_inward_to_target(pipette_pos[pipette_num][0], pipette_pos[pipette_num][1], None)
-        self.fast_move_to(None, None, pipette_height)
+        self.move_to(None, None, 10)
+        self.move_to(None, None, pipette_height)
+    
+
+
         time.sleep(2)
-        self.fast_move_to(None, None, 50)
+
+        while pipette_height <= 140:
+            pipette_height += 10
+            self.fast_move_to(None, None, pipette_height)
+
+    def step_3_move_to_solvent(self):
+        # Assumes starts at pipette tip pick up
+        solvent_1 = (262.16, 262.16, 120)
+        self.fast_move_to(None, None, solvent_1[2])
+        self.move_inward_to_target(solvent_1[0], solvent_1[1], solvent_1[2], 'CCW')
+        self.fast_move_to(None, None, 75)
+
+        # Replace with actual suction code
+        time.sleep(5)
+
+        self.fast_move_to(None, None, 120)
+        self.move_inward_to_target(0, 300, 120, 'CCW')
+
+    def step_5_dispense_sample(self, vial_num):
+        # 1 x 3
+        pipette_pos = {
+            1: (-197.54, 137.23),
+            2: (0, 0), # TODO: need to find actual values
+            3: (0, 0)
+        }
+
+        if vial_num < 1 or vial_num > 3:
+            raise ValueError("vial_num must be between 1 and 3")
+        
+        self.move_to(None, None, 50)
+        
+        self.move_inward_to_target(pipette_pos[vial_num][0], pipette_pos[vial_num][1], 45, 'CCW')
+
+        pipette_height = 45
+        while pipette_height > 25:
+            pipette_height -= 5
+            self.fast_move_to(None, None, 25)
+        
+        # Add dispense code here
+        time.sleep(5)
+
+        # Lift up
+        self.fast_move_to(None, None, 45)
+
+
 
     def toggle_gpio_pin(self, pin_number):
         # TODO: figure out what are the pin numbers corresponding to I/O pins (USART1_TX?? and USART1_RX??)
-        # State = 0 or 255?
-        # Toggle pin to HIGH
+        # State (S) = 0 or 255?
+        # Toggle pin to HIGH, then LOW
         # M1 Mode = OUTPUT
-        cmd_high = f"M42 P{pin_number} S{255} M1\r"
+
+        # Example how to toggle pin: 
+        # Leftmost Pin: 17
+        # Right Pin: 18
+        # dexarm.toggle_gpio_pin(18)
+        # dexarm.toggle_gpio_pin(17)
+
+        cmd_high = f"M42 P{pin_number} S{255}\r"
         self._send_cmd(cmd_high)
 
         time.sleep(1)
 
-        cmd_low = f"M42 P{pin_number} S{0} M1\r"
+        cmd_low = f"M42 P{pin_number} S{0}\r"
         self._send_cmd(cmd_low)
 
     def move_down_meat(self, ser_micro):
@@ -400,7 +458,7 @@ class Dexarm:
         connect = True
         received_msg = ''  # Microcontroller will send a message when it detects disconnection
         step_size = 0.1  # step size at which robot moves down in z-direction
-        max_height = 60  # maximum height of a steak [mm]
+        max_height = 45 #43  # maximum height of a steak [mm]
         z_pos = max_height  # tracking z position [mm]
 
         # Quickly move to max height allowed above steak
@@ -420,5 +478,6 @@ class Dexarm:
                 connect = False
                 print('Disconnected!')
                 time.sleep(5)  # Pause at position for 5 seconds
+                self.move_to(None, None, z=z_pos + 20)
 
 

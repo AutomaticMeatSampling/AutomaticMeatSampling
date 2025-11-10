@@ -93,19 +93,43 @@ def compute_f1_score_marbling(true_marbling_mask, predicted_marbling_mask, ld_ma
 
     return f1_score
 
+def compute_precision_only_marbling(true_marbling_mask, predicted_marbling_mask, ld_mask):
+    # Ensure same shape
+    if true_marbling_mask.shape != predicted_marbling_mask.shape or true_marbling_mask.shape != ld_mask.shape:
+        raise ValueError("All masks must have the same dimensions")
+
+    # Flatten
+    true_flat = true_marbling_mask.flatten()
+    pred_flat = predicted_marbling_mask.flatten()
+    ld_flat = ld_mask.flatten()
+
+    # True Positive: predicted white AND true white inside LD
+    TP = np.sum((pred_flat != 0) & (true_flat != 0) & (ld_flat != 0))
+    
+    # False Positive: predicted white but true black inside LD
+    FP = np.sum((pred_flat != 0) & (true_flat == 0) & (ld_flat != 0))
+
+    # Precision-style score
+    score = TP / (TP + FP) if (TP + FP) > 0 else 1.0  # If model predicts no white, score = 1
+
+    return score
+
 
 if __name__ == "__main__":
 
     # Specify the sample ID
-    sample_id = 5
-
+    sample_id = 6
+    sample_id = "2a_both"
+    type = "both" #"" #"both"
+    postfix = "" #or "_green"
+ 
     # Define paths to the true and predicted masks
     true_mask_path = os.path.join("images", "true", "LD",f"sample{sample_id}_true.jpg")
-    predicted_mask_path = os.path.join("images", "masks", f"sample{sample_id}_green_output.png")
+    predicted_mask_path = os.path.join("images", "masks", f"sample{sample_id}{postfix}_ld_mask.png")
 
     true_marbling_mask_path = os.path.join("images", "true", "marbling", f"sample{sample_id}_true_marbling.jpg")
     predicted_marbling_mask_path = os.path.join("images", "masks", f"sample{sample_id}_marbling_mask.png")
-    predicted_muscle_mask_path = os.path.join("images", "masks", f"sample{sample_id}_muscle_mask.png")
+    predicted_muscle_mask_path = os.path.join("images", "masks", f"sample{sample_id}_muscle_mask_2.png")
 
     # Load the true and predicted masks in grayscale mode
     true_mask = cv2.imread(true_mask_path, cv2.IMREAD_GRAYSCALE)
@@ -148,11 +172,15 @@ if __name__ == "__main__":
 
     accuracy_marbling = compute_accuracy_marbling(true_marbling_mask, predicted_marbling_mask, predicted_mask)
     f1_score_marbling = compute_f1_score_marbling(true_marbling_mask, predicted_marbling_mask, predicted_mask)
+    precision_only_marbling = compute_precision_only_marbling(true_marbling_mask, predicted_marbling_mask, predicted_mask)
     print(f"Marbling Accuracy for sample {sample_id}: {accuracy_marbling:.4f}")
     print(f"Marbling F1 Score for sample {sample_id}: {f1_score_marbling:.4f}")
+    print(f"Marbling Precision-Only Score for sample {sample_id}: {precision_only_marbling:.4f}")
 
     # Compute accuracy for muscle
     accuracy_muscle = compute_accuracy_marbling(true_muscle_mask, predicted_muscle_mask, predicted_mask)
     f1_score_muscle = compute_f1_score_marbling(true_muscle_mask, predicted_muscle_mask, predicted_mask)
+    precision_only_muscle = compute_precision_only_marbling(true_muscle_mask, predicted_muscle_mask, predicted_mask)
     print(f"Muscle Accuracy for sample {sample_id}: {accuracy_muscle:.4f}")
     print(f"Muscle F1 Score for sample {sample_id}: {f1_score_muscle:.4f}")
+    print(f"Muscle Precision-Only Score for sample {sample_id}: {precision_only_muscle:.4f}")

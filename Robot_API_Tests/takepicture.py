@@ -1,17 +1,40 @@
 import cv2 
+import time
 
 # Initialize webcam (0 = default camera)
-cam = cv2.VideoCapture(0)
+# cam = cv2.VideoCapture(0)
 
 # Capture one frame
-ret, frame = cam.read()
+# ret, frame = cam.read()
 
-if ret:
-    #cv2.imshow("Captured", frame)         
-    cv2.imwrite("captured_image.png", frame)  
-    #cv2.waitKey(0)                      
-    #cv2.destroyWindow("Captured")       
-else:
-    print("Failed to capture image.")
+# if ret:      
+#     cv2.imwrite("captured_image.png", frame)
+# else:
+#     print("Failed to capture image.")
 
-cam.release() 
+# cam.release() 
+
+def take_photo(save_path):
+
+    cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+
+    cam.set(cv2.CAP_PROP_FRAME_WIDTH, 3264)
+    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 2448)
+
+    time.sleep(1)
+
+    # Warm up the camera (important for high-res!)
+    for _ in range(5):
+        print("Photo!")
+        cam.read()
+
+    # Capture one frame
+    ret, frame = cam.read()
+
+    if ret:        
+        cv2.imwrite(save_path, frame)  
+    else:
+        print("Failed to capture image.")
+
+    cam.release() 
