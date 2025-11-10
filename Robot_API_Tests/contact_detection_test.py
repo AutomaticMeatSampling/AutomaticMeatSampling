@@ -11,7 +11,7 @@ def id_serial_ports():
     dexarm = None
     ports = serial.tools.list_ports.comports()
     print('Searching for COM ports')
-
+    print(ports)
     for port in ports:
         found_port = False
         for msg in msg_list:
@@ -77,16 +77,28 @@ def move_down(ser_micro, dexarm, z_pos, step_size):
 
 # Main
 if __name__ == '__main__':
-    ser_micro, dexarm = id_serial_ports()
+    # ser_micro, dexarm = id_serial_ports()
     # ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
-    # dexarm = Dexarm(port="COM6")
-    ser_micro.open()
+    dexarm = Dexarm(port="COM6")  # P17 is aspirate, P18 is eject, put some delay as well
+    dexarm.go_home()
+    # dexarm.ser.write("M42 P17 M1\r".encode())
+    # dexarm.ser.write("M42 P17 S255\r".encode())
+    # time.sleep(0.5)
+    # dexarm.ser.write("M42 P17 S0\r".encode())
 
-    dexarm.move_down_meat(ser_micro)
+    dexarm.ser.write("M42 P18 M1\r".encode())
+    dexarm.ser.write("M42 P18 S255\r".encode())
+    time.sleep(0.1)
+    dexarm.ser.write("M42 P18 S0\r".encode())
+
+    # ser_micro.open()
+
+    # dexarm.move_down_meat(ser_micro)
     # move_down(ser_micro, dexarm, z_home, step_size)
     # for i in range(0, 10):
     #    dexarm.move_to(None, None, 40)
     #    move_down(ser_micro, dexarm)  # move dexarm down until microcontroller signals broken contact
     #    time.sleep(5)
 
-    ser_close(ser_micro, dexarm)
+    dexarm.close()
+    # ser_close(ser_micro, dexarm)
