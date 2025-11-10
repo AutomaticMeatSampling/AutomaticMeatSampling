@@ -428,7 +428,7 @@ class Dexarm:
 
 
     def toggle_gpio_pin(self, pin_number):
-        # TODO: figure out what are the pin numbers corresponding to I/O pins (USART1_TX?? and USART1_RX??)
+        # pin_number: pin 17 for aspirate and pin 18 for ejection
         # State (S) = 0 or 255?
         # Toggle pin to HIGH, then LOW
         # M1 Mode = OUTPUT
@@ -436,14 +436,12 @@ class Dexarm:
         # Example how to toggle pin: 
         # Leftmost Pin: 17
         # Right Pin: 18
-        # dexarm.toggle_gpio_pin(18)
-        # dexarm.toggle_gpio_pin(17)
+        # dexarm.toggle_gpio_pin(18) for ejecting pipette tip
+        # dexarm.toggle_gpio_pin(17) for aspirating pipette
 
         cmd_high = f"M42 P{pin_number} S{255}\r"
         self._send_cmd(cmd_high)
-
-        time.sleep(1)
-
+        time.sleep(0.1)
         cmd_low = f"M42 P{pin_number} S{0}\r"
         self._send_cmd(cmd_low)
 
