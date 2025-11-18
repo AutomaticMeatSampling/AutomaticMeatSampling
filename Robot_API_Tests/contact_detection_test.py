@@ -78,7 +78,7 @@ def move_down(ser_micro, dexarm, z_pos, step_size):
 # Main
 if __name__ == '__main__':
     # ser_micro, dexarm = id_serial_ports()
-    # ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
+    ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
     dexarm = Dexarm(port="COM6")  # P17 is aspirate, P18 is eject, put some delay as well
     dexarm.go_home()
     # dexarm.ser.write("M42 P17 M1\r".encode())

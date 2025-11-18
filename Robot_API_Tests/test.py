@@ -1,12 +1,12 @@
 from pydexarm import Dexarm
 import time
 import cv2
-from takepicture import take_photo
+# from takepicture import take_photo
 import serial
 import serial.tools.list_ports
 
-def main():
-    dexarm = Dexarm(port="COM3")
+def main(pipette_pin):
+    dexarm = Dexarm(port="COM6")
     ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
 
     # Step 1: At initiation, always go home first
@@ -50,7 +50,7 @@ def main():
 
     # Step 2: Collect pipette tip
     dexarm.fast_move_to(None, None, 120)
-    dexarm.move_to_pipette_tip(1)
+    dexarm.move_to_pipette_tip(pipette_pin)
 
     # time.sleep(3)
 
@@ -71,7 +71,7 @@ def main():
 
 
     # Step 5: Dispense liquid
-    dexarm.step_5_dispense_sample(1)
+    dexarm.step_5_dispense_sample(2)
 
     # Step 6: Drop off pipette
     dexarm.step_6_move_to_dispose_cup()
@@ -100,4 +100,6 @@ def main():
     pass
 
 if __name__ == '__main__':
-    main()
+    for i in range(1,7):
+        main(i)
+
