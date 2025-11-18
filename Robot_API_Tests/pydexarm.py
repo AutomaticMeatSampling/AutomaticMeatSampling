@@ -3,15 +3,12 @@ import re
 import math
 import time
 
+
 class Dexarm:
     """ Python class for Dexarm
     """
 
-    #system maximum speed: 500mm/s or 30000 mm/min
-
-    y_home = 300;#DO NOT CHANGE
-
-    
+    y_home = 300
 
     def __init__(self, port):
         """
@@ -53,7 +50,6 @@ class Dexarm:
         Go to home position and enable the motors. Should be called each time when power on.
         """
         self._send_cmd("M1112\r")
-        
 
     def set_workorigin(self):
         """
@@ -70,7 +66,8 @@ class Dexarm:
             travel_acceleration (int): used for moves that include no extrusion.
             retract_acceleration (int): used for extruder retraction moves.
         """
-        cmd = "M204"+"P" + str(acceleration) + "T"+str(travel_acceleration) + "R" + str(retract_acceleration) + "\r\n"
+        cmd = "M204" + "P" + str(acceleration) + "T" + str(travel_acceleration) + "R" + str(
+            retract_acceleration) + "\r\n"
         self._send_cmd(cmd)
 
     def set_module_type(self, module_type):
@@ -121,7 +118,7 @@ class Dexarm:
         """
         cmd = mode + "F" + str(feedrate)
         if x is not None:
-            cmd = cmd + "X"+str(round(x))
+            cmd = cmd + "X" + str(round(x))
         if y is not None:
             cmd = cmd + "Y" + str(round(y))
         if z is not None:
@@ -140,7 +137,7 @@ class Dexarm:
             feedrate (int): sets the feedrate for all subsequent moves
         """
         Dexarm.move_to(self, x=x, y=y, z=z, feedrate=feedrate, mode="G0", wait=wait)
-    
+
     def get_current_position(self):
         """
         Get the current position
@@ -252,6 +249,7 @@ class Dexarm:
         self._send_cmd("M5\r")
 
     """Conveyor Belt"""
+
     def conveyor_belt_forward(self, speed=0):
         """
         Move the belt forward
@@ -271,6 +269,7 @@ class Dexarm:
         self._send_cmd("M2013\r")
 
     """Sliding Rail"""
+
     def sliding_rail_init(self):
         """
         Sliding rail init.
@@ -307,8 +306,8 @@ class Dexarm:
         x_curr, y_curr, z_curr, *_ = self.get_current_position()
 
         # Compute radius and angles
-        radius_start = math.sqrt(x_curr**2 + y_curr**2)
-        radius_end = math.sqrt(x_target**2 + y_target**2)
+        radius_start = math.sqrt(x_curr ** 2 + y_curr ** 2)
+        radius_end = math.sqrt(x_target ** 2 + y_target ** 2)
 
         # Keep z constant
         z = z_height
@@ -338,7 +337,7 @@ class Dexarm:
         cup_z = 130.3
 
         self.fast_move_to(None, None, cup_z)
-        self.move_inward_to_target(cup_x, cup_y, cup_z, 'CW') #tell to move to z first
+        self.move_inward_to_target(cup_x, cup_y, cup_z, 'CW')  # tell to move to z first
 
         # Verify that robot has reached position before ejecting pipette
         self.verify_movement([cup_x, cup_y, cup_z])
@@ -353,7 +352,7 @@ class Dexarm:
         pipette_1 = (307.09, 173.97)
         pipette_pos = {
             1: pipette_1,  # 1: (317.63, 175.58),
-            2: (pipette_1[0] + 11, pipette_1[1]), # TODO: need to find actual values
+            2: (pipette_1[0] + 11, pipette_1[1]),  # TODO: need to find actual values
             3: (pipette_1[0] + 1, pipette_1[1] + 13),
             4: (pipette_1[0] + 11, pipette_1[1] + 10),
             5: (pipette_1[0], pipette_1[1] + 23),
@@ -375,7 +374,7 @@ class Dexarm:
 
     def step_3_move_to_solvent(self):
         # Assumes starts at pipette tip pick up
-        solvent_z = 75 # z position for robot to aspirate from solvent
+        solvent_z = 75  # z position for robot to aspirate from solvent
         solvent_1 = (262.16, 262.16, 120)
         self.fast_move_to(None, None, solvent_1[2])
         self.move_inward_to_target(solvent_1[0], solvent_1[1], solvent_1[2], 'CCW')
@@ -402,9 +401,9 @@ class Dexarm:
 
         if vial_num < 1 or vial_num > 3:
             raise ValueError("vial_num must be between 1 and 3")
-        
+
         self.move_to(None, None, 50)
-        
+
         self.move_inward_to_target(pipette_pos[vial_num][0], pipette_pos[vial_num][1], 45, 'CCW')
 
         pipette_height = 45
@@ -473,7 +472,7 @@ class Dexarm:
                 connect = False
                 print('Disconnected!')
                 time.sleep(5)  # Pause at position for 5 seconds
-                self.move_to(None, curr_y+20, z=z_pos + 20)
+                self.move_to(None, curr_y + 20, z=z_pos + 20)
             else:
                 self.move_to(None, None, z=z_pos)
                 # self.verify_movement()
@@ -490,9 +489,7 @@ class Dexarm:
         target_reached = False
         while not target_reached:
             x_curr, y_curr, z_curr, *_ = self.get_current_position()
-            if ((abs(x_curr - target[0])/target[0])*100 < 0.5 and
-            (abs(y_curr - target[1])/target[1])*100 < 0.5 and
-            (abs(z_curr - target[2])/target[2])*100 < 0.5):
+            if ((abs(x_curr - target[0]) / target[0]) * 100 < 0.5 and
+                    (abs(y_curr - target[1]) / target[1]) * 100 < 0.5 and
+                    (abs(z_curr - target[2]) / target[2]) * 100 < 0.5):
                 target_reached = True
-
-
