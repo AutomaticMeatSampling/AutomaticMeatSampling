@@ -4,10 +4,50 @@ import cv2
 # from takepicture import take_photo
 import serial
 import serial.tools.list_ports
+import threading
+import sys
+from pathlib import Path
 
-def main(pipette_pin):
-    dexarm = Dexarm(port="COM6")
+
+repo_root = Path(__file__).resolve().parent.parent  # Repo/
+seg_folder = repo_root / "Segmentation_Algorithms"
+sys.path.append(str(seg_folder))
+
+import select_sample_point
+import segment_ld
+
+use_img_processing = False
+
+# To signal that image processing is done
+processing_done = threading.Event()
+
+result_holder = {}
+
+def image_processing_thread(predictor, img_path, num_marbling_pts=1, num_muscle_pts=0):
+    print("[IMAGE PROCESSING] Starting image processing...")
+    processing_done.clear()
+
+    # Begin image processing code
+    muscle_points, marbling_points = select_sample_point.segment_and_select_points(img_path, predictor, num_marbling_pts=num_marbling_pts, num_muscle_pts=num_muscle_pts)
+
+    result_holder["muscle_points"] = muscle_points
+    result_holder["marbling_points"] = marbling_points
+
+    print("[IMAGE PROCESSING] Processing Complete !!!!")
+
+    processing_done.set()
+
+
+def main():
+    # Load predictor only one time
+    if use_img_processing:
+        predictor = segment_ld.load_sam_model()
+
+    dexarm = Dexarm(port="COM3")
     ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
+
+    num_marbling_pts = 1
+    num_muscle_pts = 0
 
     # Step 1: At initiation, always go home first
     # dexarm.go_home()
@@ -46,6 +86,17 @@ def main(pipette_pin):
     dexarm.go_home()
     dexarm.move_to(0, dexarm.y_home+photograph_offset_y, photograph_offset_z)
 
+    img_path = "meat_sample.png"
+    if use_img_processing:
+        time.sleep(2)
+        take_photo(img_path)
+        vision_thread = threading.Thread(
+            target=image_processing_thread,
+            args=(predictor, img_path, num_marbling_pts, num_muscle_pts,),
+            daemon=True
+        )
+        vision_thread.start()
+
     # time.sleep(3)
 
     # Step 2: Collect pipette tip
@@ -63,6 +114,16 @@ def main(pipette_pin):
 
 
     # Step 4: Move to temporary sample location
+
+    if use_img_processing:
+        processing_done.wait()
+        marbling_points = result_holder["marbling_points"]
+        muscle_points = result_holder["muscle_points"]
+        # TODO calculate actual movement stuff here
+        print(marbling_points)
+        print(muscle_points)
+
+    
     sample_loc_x = -7
     sample_loc_y = 185
     dexarm.move_to(0,187, 45)
