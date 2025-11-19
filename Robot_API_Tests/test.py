@@ -1,7 +1,7 @@
 from pydexarm import Dexarm
 import time
 import cv2
-# from takepicture import take_photo
+from takepicture import take_photo
 import serial
 import serial.tools.list_ports
 import threading
@@ -26,19 +26,23 @@ result_holder = {}
 def image_processing_thread(predictor, img_path, num_marbling_pts=1, num_muscle_pts=0):
     print("[IMAGE PROCESSING] Starting image processing...")
     processing_done.clear()
+    start = time.time()
 
     # Begin image processing code
-    muscle_points, marbling_points = select_sample_point.segment_and_select_points(img_path, predictor, num_marbling_pts=num_marbling_pts, num_muscle_pts=num_muscle_pts)
+    muscle_points, marbling_points = select_sample_point.segment_and_select_points(img_path, predictor, num_marbling_pts=num_marbling_pts, num_muscle_pts=num_muscle_pts, show=False)
 
     result_holder["muscle_points"] = muscle_points
     result_holder["marbling_points"] = marbling_points
 
-    print("[IMAGE PROCESSING] Processing Complete !!!!")
+    end_time = time.time() - start
+
+    print(f"[IMAGE PROCESSING] Processing Complete at {end_time} seconds !!!!")
 
     processing_done.set()
 
 
 def main():
+    pipette_pin = 1
     # Load predictor only one time
     if use_img_processing:
         predictor = segment_ld.load_sam_model()
@@ -161,6 +165,7 @@ def main():
     pass
 
 if __name__ == '__main__':
-    for i in range(1,7):
-        main(i)
+    main()
+    # for i in range(1,7):
+    #     main(i)
 

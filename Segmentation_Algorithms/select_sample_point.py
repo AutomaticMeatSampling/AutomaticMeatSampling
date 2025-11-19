@@ -16,7 +16,7 @@ def rel_path(path):
         os.makedirs(folder)
     return filepath
 
-def get_sample_points(marbling_mask_img_path, muscle_mask_img_path, num_marbling_points, num_muscle_points):
+def get_sample_points(marbling_mask_img_path, muscle_mask_img_path, num_marbling_points, num_muscle_points, show=True):
     # Read binary masks
     muscle_mask = cv2.imread(muscle_mask_img_path, cv2.IMREAD_GRAYSCALE)
     marbling_mask = cv2.imread(marbling_mask_img_path, cv2.IMREAD_GRAYSCALE)
@@ -42,10 +42,11 @@ def get_sample_points(marbling_mask_img_path, muscle_mask_img_path, num_marbling
             muscle_distance_map = cv2.distanceTransform(muscle_mask, cv2.DIST_L2, 5)
 
             # Distance Map of Muscles
-            plt.imshow(muscle_distance_map, cmap='hot')
-            plt.colorbar()
-            plt.title("Muscle Distance Transform Map")
-            plt.show()
+            if show:
+                plt.imshow(muscle_distance_map, cmap='hot')
+                plt.colorbar()
+                plt.title("Muscle Distance Transform Map")
+                plt.show()
 
             max_dist_point = np.unravel_index(np.argmax(muscle_distance_map), muscle_distance_map.shape)
 
@@ -59,20 +60,22 @@ def get_sample_points(marbling_mask_img_path, muscle_mask_img_path, num_marbling
            
             # UNCOMMENT BELOW TO SHOW INTERMEDIATE STEPS:
             # Display muscle_mask at this point
-            plt.imshow(muscle_mask, cmap='gray')
-            plt.axis("off")
-            plt.title("Muscle Mask with Selected Point Blacked Out")
-            plt.show()
+            if show:
+                plt.imshow(muscle_mask, cmap='gray')
+                plt.axis("off")
+                plt.title("Muscle Mask with Selected Point Blacked Out")
+                plt.show()
 
         elif (i % 2 == 1 and len(selected_marbling_points) < num_marbling_points) or (len(selected_muscle_points) == num_muscle_points):
             # Recompute the distance transform for the marbling mask
             marbling_distance_map = cv2.distanceTransform(marbling_mask, cv2.DIST_L2, 5)
 
             # Distance Map of Muscles
-            plt.imshow(marbling_distance_map, cmap='hot')
-            plt.colorbar()
-            plt.title("Marbling Distance Transform Map")
-            plt.show()
+            if show:
+                plt.imshow(marbling_distance_map, cmap='hot')
+                plt.colorbar()
+                plt.title("Marbling Distance Transform Map")
+                plt.show()
 
             # Select the point with the maximum distance
             max_dist_point = np.unravel_index(np.argmax(marbling_distance_map), marbling_distance_map.shape)
@@ -91,15 +94,17 @@ def get_sample_points(marbling_mask_img_path, muscle_mask_img_path, num_marbling
             # plt.title("Marbling Mask with Selected Point Blacked Out")
             # plt.show()
 
-    plt.imshow(muscle_mask, cmap='gray')
-    plt.axis("off")
-    plt.title("Muscle Mask with Selected Point Blacked Out")
-    plt.show()
+    if show:
+        plt.imshow(muscle_mask, cmap='gray')
+        plt.axis("off")
+        plt.title("Muscle Mask with Selected Point Blacked Out")
+        plt.show()
     
-    plt.imshow(marbling_mask, cmap='gray')
-    plt.axis("off")
-    plt.title("Marbling Mask with Selected Point Blacked Out")
-    plt.show()
+    if show:
+        plt.imshow(marbling_mask, cmap='gray')
+        plt.axis("off")
+        plt.title("Marbling Mask with Selected Point Blacked Out")
+        plt.show()
 
     return selected_muscle_points, selected_marbling_points
 
@@ -150,7 +155,7 @@ def segment_and_select_points(steak_img_path, predictor, num_marbling_pts=1, num
     cv2.imwrite(marbling_mask_path, segment_tissue_results["final_marbling"])
     cv2.imwrite(muscle_mask_path, segment_tissue_results["final_muscle"])
 
-    muscle_points, marbling_points = get_sample_points(marbling_mask_path, muscle_mask_path, num_marbling_pts, num_muscle_pts)
+    muscle_points, marbling_points = get_sample_points(marbling_mask_path, muscle_mask_path, num_marbling_pts, num_muscle_pts, show=show)
 
     if show:
         show_final_selected(steak_img_path, muscle_points, marbling_points)
