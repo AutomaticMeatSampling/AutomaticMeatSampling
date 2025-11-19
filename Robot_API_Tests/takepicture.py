@@ -1,5 +1,6 @@
 import cv2 
 import time
+import os
 
 # Initialize webcam (0 = default camera)
 # cam = cv2.VideoCapture(0)
@@ -16,8 +17,10 @@ import time
 
 def take_photo(save_path):
 
-    cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-
+    if os.name == "nt":#Windows
+        cam = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    else: #Mac/Linux
+        cam = cv2.VideoCapture(0)
 
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, 3264)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 2448)
