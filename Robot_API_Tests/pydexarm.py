@@ -3,12 +3,13 @@ import re
 import math
 import time
 
-
 class Dexarm:
     """ Python class for Dexarm
     """
 
-    y_home = 300
+    #system maximum speed: 500mm/s or 30000 mm/min
+    y_home = 300;#DO NOT CHANGE
+    photograph_offset = 40 #y offset (was -40)
 
     def __init__(self, port):
         """
@@ -50,6 +51,7 @@ class Dexarm:
         Go to home position and enable the motors. Should be called each time when power on.
         """
         self._send_cmd("M1112\r")
+        
 
     def set_workorigin(self):
         """
@@ -66,8 +68,7 @@ class Dexarm:
             travel_acceleration (int): used for moves that include no extrusion.
             retract_acceleration (int): used for extruder retraction moves.
         """
-        cmd = "M204" + "P" + str(acceleration) + "T" + str(travel_acceleration) + "R" + str(
-            retract_acceleration) + "\r\n"
+        cmd = "M204"+"P" + str(acceleration) + "T"+str(travel_acceleration) + "R" + str(retract_acceleration) + "\r\n"
         self._send_cmd(cmd)
 
     def set_module_type(self, module_type):
@@ -118,7 +119,7 @@ class Dexarm:
         """
         cmd = mode + "F" + str(feedrate)
         if x is not None:
-            cmd = cmd + "X" + str(round(x))
+            cmd = cmd + "X"+str(round(x))
         if y is not None:
             cmd = cmd + "Y" + str(round(y))
         if z is not None:
@@ -137,7 +138,7 @@ class Dexarm:
             feedrate (int): sets the feedrate for all subsequent moves
         """
         Dexarm.move_to(self, x=x, y=y, z=z, feedrate=feedrate, mode="G0", wait=wait)
-
+    
     def get_current_position(self):
         """
         Get the current position
@@ -249,7 +250,6 @@ class Dexarm:
         self._send_cmd("M5\r")
 
     """Conveyor Belt"""
-
     def conveyor_belt_forward(self, speed=0):
         """
         Move the belt forward
@@ -269,7 +269,6 @@ class Dexarm:
         self._send_cmd("M2013\r")
 
     """Sliding Rail"""
-
     def sliding_rail_init(self):
         """
         Sliding rail init.
@@ -285,6 +284,12 @@ class Dexarm:
     ###################### 
     # CUSTOM FUNCTIONS
     ######################
+
+    def report_coordinates(self):
+        x_curr, y_curr, z_curr, *_ = self.get_current_position()
+        print(f" actual X: {x_curr}") 
+        print(f" actual Y: {y_curr}") 
+        print(f" actual Z : {z_curr}")
 
     def move_inward_to_target(self, x_target, y_target, z_height=None, direction='CW', speed=4000):
         """
@@ -306,14 +311,19 @@ class Dexarm:
         x_curr, y_curr, z_curr, *_ = self.get_current_position()
 
         # Compute radius and angles
-        radius_start = math.sqrt(x_curr ** 2 + y_curr ** 2)
-        radius_end = math.sqrt(x_target ** 2 + y_target ** 2)
+        radius_start = math.sqrt(x_curr**2 + y_curr**2)
+        radius_end = math.sqrt(x_target**2 + y_target**2)
 
         # Keep z constant
         z = z_height
 
+        ############################################################
+        ############################################################
         # Choose G2 or G3
         gcode_type = 'G2' if direction.upper() == 'CW' else 'G3'
+        #TO DO, check which one is most efficient automatically
+        ############################################################
+        ############################################################
 
         # I, J = relative offset from current position to circle center
         I = center_x - x_curr
@@ -330,6 +340,44 @@ class Dexarm:
             time.sleep(0.1)
             self._send_cmd(cmd_radial)
 
+    
+    
+    def move_to_point_position(self, dot_x_pixel, dot_y_pixel):
+        CAMERA_WIDTH_PX = 2372
+        CAMERA_HEIGHT_PX = 1582
+
+        grid_pixels_x = 55#39
+        grid_pixel_y = 55#39
+
+        INCHES_TO_MM = 25.4 #true constant
+        grid_inches = 0.25 #inches
+        grid_mm = grid_inches*INCHES_TO_MM
+
+        x_camera_center_offset_pixel = CAMERA_WIDTH_PX/2
+        y_camera_center_offset_pixel = CAMERA_HEIGHT_PX/2 #POSITIVE IS NEGATIVE and vice versa for additional offsets
+
+        x_mm_per_pixel = grid_mm/grid_pixels_x
+        y_mm_per_pixel = grid_mm/grid_pixel_y
+
+        pipette_offset_x = 0#-5*x_mm_per_pixel
+        pipette_offset_y = 0#609*y_mm_per_pixel #606
+
+        pixel_move_x_mm = ((dot_x_pixel - x_camera_center_offset_pixel)*x_mm_per_pixel) + pipette_offset_x;
+        pixel_move_y_mm = -((dot_y_pixel - y_camera_center_offset_pixel)*y_mm_per_pixel) - pipette_offset_y;
+
+        if dot_x_pixel > x_camera_center_offset_pixel:
+            rotation_mode = 'CW'
+        else:
+            rotation_mode = 'CCW'
+
+        self.fast_move_to(0, self.y_home+self.photograph_offset, 0)
+        self.move_inward_to_target(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, -40, rotation_mode) 
+        #To do change this to work with pipette hieght adjustment
+    
+    def move_to_photograph_position(self):
+        # Move to photographing position
+        self.move_to(0, self.y_home+self.photograph_offset, 150)
+
     def step_6_move_to_dispose_cup(self):
         # Move to dispose cup position
         cup_x = -211.67
@@ -337,26 +385,37 @@ class Dexarm:
         cup_z = 130.3
 
         self.fast_move_to(None, None, cup_z)
-        self.move_inward_to_target(cup_x, cup_y, cup_z, 'CW')  # tell to move to z first
-
-        # Verify that robot has reached position before ejecting pipette
-        self.verify_movement([cup_x, cup_y, cup_z])
+        self.move_inward_to_target(cup_x, cup_y, cup_z, 'CW') #tell to move to z first
 
         # TODO: Add drop of code here:
-        time.sleep(1)
-        self.toggle_gpio_pin(18)
-        time.sleep(2)
+        time.sleep(5)
+
+    def move_to_drop_sample(self, sample_num):
+        # Move to grid (1 row x 3 columns) of vials. First vial is at top left
+
+        max_num = 3
+
+        vial_pos = {
+            1: (0, 0), # TODO: need to find actual values
+            2: (0, 0),
+            3: (0, 0)
+        }
+
+        if sample_num < 1 or sample_num > 3:
+            raise ValueError("sample_num must be between 1 and 3")
+        
+        pipette_height = 0
 
     def move_to_pipette_tip(self, pipette_num):
         # Move to grid (3 rows X 2 columns) of pipettes. First pipette is at top left:
-        pipette_1 = (307.09, 173.97)
+        
         pipette_pos = {
-            1: pipette_1,  # 1: (317.63, 175.58),
-            2: (pipette_1[0] + 11, pipette_1[1]),  # TODO: need to find actual values
-            3: (pipette_1[0] + 1, pipette_1[1] + 13),
-            4: (pipette_1[0] + 11, pipette_1[1] + 10),
-            5: (pipette_1[0], pipette_1[1] + 23),
-            6: (pipette_1[0] + 9, pipette_1[1] + 23)
+            1: (318.37, 177.74), # 1: (317.63, 175.58),
+            2: (0, 0), # TODO: need to find actual values
+            3: (0, 0),
+            4: (0, 0),
+            5: (0, 0),
+            6: (0, 0)
         }
 
         if pipette_num < 1 or pipette_num > 6:
@@ -374,19 +433,13 @@ class Dexarm:
 
     def step_3_move_to_solvent(self):
         # Assumes starts at pipette tip pick up
-        solvent_z = 75  # z position for robot to aspirate from solvent
         solvent_1 = (262.16, 262.16, 120)
         self.fast_move_to(None, None, solvent_1[2])
         self.move_inward_to_target(solvent_1[0], solvent_1[1], solvent_1[2], 'CCW')
-        self.fast_move_to(None, None, solvent_z)
+        self.fast_move_to(None, None, 75)
 
-        # Verify that robot has reached position before ejecting pipette
-        self.verify_movement([solvent_1[0], solvent_1[1], solvent_z])
-
-        # Aspiration
-        time.sleep(1)
-        self.toggle_gpio_pin(17)
-        time.sleep(2)
+        # Replace with actual suction code
+        time.sleep(5)
 
         self.fast_move_to(None, None, 120)
         self.move_inward_to_target(0, 300, 120, 'CCW')
@@ -394,31 +447,25 @@ class Dexarm:
     def step_5_dispense_sample(self, vial_num):
         # 1 x 3
         pipette_pos = {
-            1: (-193.14, 136.7),
-            2: (-207.14, 136.7),
-            3: (-220.14, 136.7)
+            1: (-197.54, 137.23),
+            2: (0, 0), # TODO: need to find actual values
+            3: (0, 0)
         }
 
         if vial_num < 1 or vial_num > 3:
             raise ValueError("vial_num must be between 1 and 3")
-
+        
         self.move_to(None, None, 50)
-
+        
         self.move_inward_to_target(pipette_pos[vial_num][0], pipette_pos[vial_num][1], 45, 'CCW')
 
         pipette_height = 45
-        final_pipette_height = 25
-        while pipette_height > final_pipette_height:
+        while pipette_height > 25:
             pipette_height -= 5
-            self.fast_move_to(None, None, final_pipette_height)
-
-        # Verify that robot has reached position before ejecting pipette
-        self.verify_movement([pipette_pos[vial_num][0], pipette_pos[vial_num][1], final_pipette_height])
-
+            self.fast_move_to(None, None, 25)
+        
         # Add dispense code here
-        time.sleep(1)
-        self.toggle_gpio_pin(17)
-        time.sleep(2)
+        time.sleep(5)
 
         # Lift up
         self.fast_move_to(None, None, 45)
@@ -432,12 +479,12 @@ class Dexarm:
         # Example how to toggle pin: 
         # Leftmost Pin: 17
         # Right Pin: 18
-        # self.toggle_gpio_pin(18) for ejecting pipette tip
-        # self.toggle_gpio_pin(17) for aspirating pipette
+        # dexarm.toggle_gpio_pin(18) for ejecting pipette tip
+        # dexarm.toggle_gpio_pin(17) for aspirating pipette
 
         cmd_high = f"M42 P{pin_number} S{255}\r"
         self._send_cmd(cmd_high)
-        time.sleep(1)
+        time.sleep(0.1)
         cmd_low = f"M42 P{pin_number} S{0}\r"
         self._send_cmd(cmd_low)
 
@@ -452,7 +499,7 @@ class Dexarm:
         connect = True
         received_msg = ''  # Microcontroller will send a message when it detects disconnection
         step_size = 0.1  # step size at which robot moves down in z-direction
-        max_height = 45  # maximum height of a steak [mm]
+        max_height = 45 #43  # maximum height of a steak [mm]
         z_pos = max_height  # tracking z position [mm]
 
         # Quickly move to max height allowed above steak
@@ -462,34 +509,16 @@ class Dexarm:
         ser_micro.flushInput()
         ser_micro.write(bytes('D', 'utf-8'))
 
-        curr_x, curr_y, curr_z, *_ = self.get_current_position()
-
         # Check contact detection while moving robot down by step_size
         while connect:
             received_msg = ser_micro.readline()
             ser_micro.flushInput()
+            self.move_to(None, None, z=z_pos)
+            z_pos = z_pos - step_size
             if received_msg == b'DISCONNECTED\r\n':
                 connect = False
                 print('Disconnected!')
                 time.sleep(5)  # Pause at position for 5 seconds
-                self.move_to(None, curr_y + 20, z=z_pos + 20)
-            else:
-                self.move_to(None, None, z=z_pos)
-                # self.verify_movement()
-                z_pos = z_pos - step_size
+                self.move_to(None, None, z=z_pos + 20)
 
-    def verify_movement(self, target):
-        """
-            Check if the current position of the robot matches the target position
-            It will block the program until the current position is within 0.5% of target
 
-            Args:
-            target (list): [x_target, y_target, z_target]
-        """
-        target_reached = False
-        while not target_reached:
-            x_curr, y_curr, z_curr, *_ = self.get_current_position()
-            if ((abs(x_curr - target[0]) / target[0]) * 100 < 0.5 and
-                    (abs(y_curr - target[1]) / target[1]) * 100 < 0.5 and
-                    (abs(z_curr - target[2]) / target[2]) * 100 < 0.5):
-                target_reached = True
