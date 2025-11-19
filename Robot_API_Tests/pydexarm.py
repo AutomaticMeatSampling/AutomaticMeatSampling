@@ -341,16 +341,26 @@ class Dexarm:
             self._send_cmd(cmd_radial)
 
     
+
+
+
+
+
+
+
+
     
     def move_to_point_position(self, dot_x_pixel, dot_y_pixel):
-        CAMERA_WIDTH_PX = 2372
-        CAMERA_HEIGHT_PX = 1582
+        CAMERA_WIDTH_PX =  3264 #old: 2372, new: 3264
+        CAMERA_HEIGHT_PX =  2448#old: 1582, new: 2448
 
-        grid_pixels_x = 55#39
-        grid_pixel_y = 55#39
+        grid_pixels_x = 55#old: 55
+        grid_pixel_y = 55#old: 55
 
         INCHES_TO_MM = 25.4 #true constant
         grid_inches = 0.25 #inches
+        #need to split grid inches into x and y
+
         grid_mm = grid_inches*INCHES_TO_MM
 
         x_camera_center_offset_pixel = CAMERA_WIDTH_PX/2
@@ -371,12 +381,24 @@ class Dexarm:
             rotation_mode = 'CCW'
 
         self.fast_move_to(0, self.y_home+self.photograph_offset, 0)
-        self.move_inward_to_target(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, -40, rotation_mode) 
+        self.move_inward_to_target(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, 0, rotation_mode) 
+        #self.move_inward_to_target(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, -40, rotation_mode)
         #To do change this to work with pipette hieght adjustment
     
-    def move_to_photograph_position(self):
+
+
+
+
+
+
+
+
+
+
+
+    def move_to_photograph_position(self, photo_y=photograph_offset, photo_z=150):
         # Move to photographing position
-        self.move_to(0, self.y_home+self.photograph_offset, 150)
+        self.move_to(0, self.y_home+photo_y, photo_z) #default z is 150
 
     def step_6_move_to_dispose_cup(self):
         # Move to dispose cup position
