@@ -7,3 +7,7 @@ myenv/
 
 # .pyc files
 *.pyc
+
+# IDE Files
+*.iml
+.idea/
