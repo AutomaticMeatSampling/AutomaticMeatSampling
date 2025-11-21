@@ -439,6 +439,9 @@ class Dexarm:
             5: (0, 0),
             6: (0, 0)
         }
+        
+        # Initial movement to not hit anything
+        self.fast_move_to(None, None, 120)
 
         if pipette_num < 1 or pipette_num > 6:
             raise ValueError("pipette_num must be between 1 and 6")

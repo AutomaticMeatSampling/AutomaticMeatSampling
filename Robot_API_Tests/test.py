@@ -84,7 +84,7 @@ def main():
 
 
     # Step 1: Go to photograph position and take photo
-    photograph_offset_y = -40
+    photograph_offset_y = 30
     photograph_offset_z = 110
 
     dexarm.go_home()
@@ -104,7 +104,6 @@ def main():
     # time.sleep(3)
 
     # Step 2: Collect pipette tip
-    dexarm.fast_move_to(None, None, 120)
     dexarm.move_to_pipette_tip(pipette_pin)
 
     # time.sleep(3)
