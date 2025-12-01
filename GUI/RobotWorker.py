@@ -5,6 +5,7 @@ import serial
 import time
 from ImageWorker import ImageWorker
 import cv2
+import os
 
 repo_root = Path(__file__).resolve().parent.parent  # Repo/
 seg_folder = repo_root / "Robot_API_Tests"
@@ -13,11 +14,20 @@ sys.path.append(str(seg_folder))
 from pydexarm import Dexarm
 from takepicture import take_photo
 
+SCRIPT_DIR = Path(__file__).resolve()
+def rel_path(path):
+    filepath = SCRIPT_DIR.parent / path
+    folder = os.path.dirname(filepath)
+    if folder and not os.path.exists(folder):
+        os.makedirs(folder)
+    return filepath
+
 class RobotWorker(QThread):
     progress = pyqtSignal(str)
-    steps = ["TIP_PICKUP", "SOLVENT_PICKUP", "MOVE_TO_XY_SAMPLE_COORD", "MOVE_DOWN_TO_SAMPLE_COORD", "SAMPLE_DROPOFF", "TIP_DISPOSAL"]
+    steps = ["MOVE_TO_XY_SAMPLE_COORD"]
+    #"TIP_PICKUP", "SOLVENT_PICKUP", "MOVE_TO_XY_SAMPLE_COORD", "MOVE_DOWN_TO_SAMPLE_COORD", "SAMPLE_DROPOFF", "TIP_DISPOSAL"
 
-    def __init__(self, sample_mode, main_window, curr_tip=1, max_tip_num=6, curr_vial=1, max_vial_num=3, use_robot_simulator=False, use_simulated_sample=True):
+    def __init__(self, sample_mode, main_window, curr_tip=1, max_tip_num=6, curr_vial=1, max_vial_num=3, use_robot_simulator=False, use_simulated_sample=False):
         super().__init__()
 
         # ------------------------
@@ -55,8 +65,13 @@ class RobotWorker(QThread):
         #--------------------------------
         print("Setting up robot connections...")
         if not self.use_robot_simulator:
-            self.dexarm = Dexarm(port="COM3")
-            self.ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
+            
+            if os.name == "nt":#Windows
+                self.dexarm = Dexarm(port="COM3")
+                self.ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
+            else: #Mac/Linux
+                self.dexarm = Dexarm(port="/dev/cu.usbmodem207B396A36311")#COM3
+                self.ser_micro = serial.Serial(port='/dev/cu.usbmodem142101', baudrate=115200, timeout=0.1)
 
     def run(self):
         self.progress.emit("ROBOT_START")
@@ -131,7 +146,10 @@ class RobotWorker(QThread):
                                 return
                             
                         # ********* TODO: ADD FUNC TO MOVE TO sample XY location (Breanna) ***************
-                        self.dexarm.move_to(0, 187, 45) # Temporary test location
+                        
+                        self.dexarm.move_to_point_position(self.muscle_pts[0][0],self.muscle_pts[0][1])
+                        
+                        #self.dexarm.move_to(0, 187, 45) # Temporary test location
                             
                     # ----------------------------------------
                     # STEP 4: Move downward to sample and hold
@@ -162,7 +180,7 @@ class RobotWorker(QThread):
                 self.last_completed_step = step
 
             # After collecting sample, go home
-            self.dexarm.go_home()
+            #self.dexarm.go_home()
 
         self.complete_success = True
         self.finish()
@@ -194,15 +212,22 @@ class RobotWorker(QThread):
             photograph_offset_y = 30
             photograph_offset_z = 110
             self.dexarm.go_home()
-            self.dexarm.move_to(0, self.dexarm.y_home+photograph_offset_y, photograph_offset_z)
+            self.dexarm.move_to_photograph_position(photograph_offset_y, photograph_offset_z)
+
+
+            #move_to(0, self.dexarm.y_home+photograph_offset_y, photograph_offset_z)
+
+             
+            
             # TODO might need to wait a bit before img is taken - to stabilize
         else:
             # Imitate robot movement to photo position
             time.sleep(2)
 
         # Take photo
-        if self.use_simulated_sample:
-            simulated_img = cv2.imread("simulated_img.png")
+        if self.use_simulated_sample: 
+            simulated_img = cv2.imread(rel_path("simulated_img.png"))
+            print(simulated_img)
             cv2.imwrite(ImageWorker.img_path, simulated_img)
         else:
             take_photo(ImageWorker.img_path)
