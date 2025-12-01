@@ -351,23 +351,31 @@ class Dexarm:
 
     
     def move_to_point_position(self, dot_x_pixel, dot_y_pixel):
-        CAMERA_WIDTH_PX =  3264 #old: 2372, new: 3264
-        CAMERA_HEIGHT_PX =  2448#old: 1582, new: 2448
+        CAMERA_WIDTH_PX = 3264 #old: 2372, new: 3264
+        CAMERA_HEIGHT_PX = 2448#old: 1582, new: 2448
 
-        grid_pixels_x = 55#old: 55
-        grid_pixel_y = 55#old: 55
-
-        INCHES_TO_MM = 25.4 #true constant
-        grid_inches = 0.25 #inches
+        grid_pixels_x = 734#old: 55
+        grid_pixels_y = 556#old: 55
+        #grid_inches = 0.25 #inches
         #need to split grid inches into x and y
 
-        grid_mm = grid_inches*INCHES_TO_MM
+        INCHES_TO_MM = 25.4 #true constant
+
+        grid_inches_x = 127.75 #inches
+        grid_inches_y = 95.71 #inches
+        #need to split grid inches into x and y
+        
+        grid_mm_x = grid_inches_x*INCHES_TO_MM
+        grid_mm_y = grid_inches_y*INCHES_TO_MM
+        #need to split grid inches into x and y
+        
+        #grid_mm = grid_inches*INCHES_TO_MM
 
         x_camera_center_offset_pixel = CAMERA_WIDTH_PX/2
         y_camera_center_offset_pixel = CAMERA_HEIGHT_PX/2 #POSITIVE IS NEGATIVE and vice versa for additional offsets
 
-        x_mm_per_pixel = grid_mm/grid_pixels_x
-        y_mm_per_pixel = grid_mm/grid_pixel_y
+        x_mm_per_pixel = grid_mm_x/grid_pixels_x
+        y_mm_per_pixel = grid_mm_y/grid_pixels_y
 
         pipette_offset_x = 0#-5*x_mm_per_pixel
         pipette_offset_y = 0#609*y_mm_per_pixel #606
@@ -382,6 +390,7 @@ class Dexarm:
 
         self.fast_move_to(0, self.y_home+self.photograph_offset, 0)
         self.move_inward_to_target(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, 0, rotation_mode) 
+        
         #self.move_inward_to_target(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, -40, rotation_mode)
         #To do change this to work with pipette hieght adjustment
     
