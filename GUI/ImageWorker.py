@@ -2,12 +2,12 @@ from PyQt5.QtCore import QThread, pyqtSignal
 import sys
 from pathlib import Path
 
-repo_root = Path(__file__).resolve().parent.parent  # Repo/
-seg_folder = repo_root / "Segmentation_Algorithms"
-sys.path.append(str(seg_folder))
+#repo_root = Path(__file__).resolve().parent.parent  # Repo/
+#seg_folder = repo_root / "Segmentation_Algorithms"
+#sys.path.append(str(seg_folder))
 
-import select_sample_point
-import segment_ld
+#import select_sample_point
+#import segment_ld
 
 class ImageWorker(QThread):
     result_ready = pyqtSignal(object)
