@@ -355,36 +355,52 @@ class Dexarm:
 
     
     def move_to_point_position(self, dot_x_pixel, dot_y_pixel):
-        CAMERA_WIDTH_PX = 3264#old: 2372, new: 3264
+        CAMERA_WIDTH_PX = 3264 #old: 2372, new: 3264
         CAMERA_HEIGHT_PX = 2448#old: 1582, new: 2448
 
-        grid_pixels_x = 116#old: 55
-        grid_pixels_y = 114#old: 55
+        # grid_pixels_x = 734#old: 55
+        # grid_pixels_y = 556#old: 55
         #grid_inches = 0.25 #inches
         #need to split grid inches into x and y
 
         INCHES_TO_MM = 25.4 #true constant
-        #grid_inches_x =  #inches
-        #grid_inches_y =  #inches
+
+        grid_inches_x = 127.75 #inches
+        grid_inches_y = 95.71 #inches
         #need to split grid inches into x and y
         
-        grid_mm_x = 10#grid_inches_x*INCHES_TO_MM
-        grid_mm_y = 10#grid_inches_y*INCHES_TO_MM
+        # grid_mm_x = grid_inches_x*INCHES_TO_MM
+        # grid_mm_y = grid_inches_y*INCHES_TO_MM
+        grid_pixels_x = 116
+        grid_pixels_y = 114
+
+        grid_mm_x = 10
+        grid_mm_y = 10
         #need to split grid inches into x and y
         
         #grid_mm = grid_inches*INCHES_TO_MM
 
         x_camera_center_offset_pixel = CAMERA_WIDTH_PX/2
-        y_camera_center_offset_pixel = CAMERA_HEIGHT_PX/2 #POSITIVE IS NEGATIVE and vice versa for additional offsets
+        y_camera_center_offset_pixel = CAMERA_HEIGHT_PX/2
 
         x_mm_per_pixel = grid_mm_x/grid_pixels_x
         y_mm_per_pixel = grid_mm_y/grid_pixels_y
 
-        pipette_offset_x = 0#-5*x_mm_per_pixel
-        pipette_offset_y = 82.5#609*y_mm_per_pixel #606
+        camera_to_robot_arm_center_y = 76.04 # mm
 
-        pixel_move_x_mm = ((dot_x_pixel - x_camera_center_offset_pixel)*x_mm_per_pixel) + pipette_offset_x;
-        pixel_move_y_mm = -((dot_y_pixel - y_camera_center_offset_pixel)*y_mm_per_pixel) - pipette_offset_y;
+        robot_arm_center_pixel_move_x_mm = ((dot_x_pixel - x_camera_center_offset_pixel)*x_mm_per_pixel)# + pipette_offset_x
+        robot_arm_center_pixel_move_y_mm = -((dot_y_pixel - y_camera_center_offset_pixel)*y_mm_per_pixel) + camera_to_robot_arm_center_y# - pipette_offset_y
+
+        # Need to calculate this based on offset from center to pipette
+        pipette_tip_to_robot_arm_center_offset = 13.26
+        
+        # Calculate x and y offset based on angle of robot arm center coords (centered around (0, 5)) (use robot_arm_center_pixel_move_x_mm and robot_arm_center_pixel_move_y_mm)
+        angle = math.atan2(robot_arm_center_pixel_move_x_mm, robot_arm_center_pixel_move_y_mm - 5)
+        pipette_offset_y = pipette_tip_to_robot_arm_center_offset * math.cos(angle)
+        pipette_offset_x = pipette_tip_to_robot_arm_center_offset * math.sin(angle)
+
+        pixel_move_x_mm = robot_arm_center_pixel_move_x_mm - pipette_offset_x
+        pixel_move_y_mm = robot_arm_center_pixel_move_y_mm - pipette_offset_y
 
         if dot_x_pixel > x_camera_center_offset_pixel:
             rotation_mode = 'CW'
@@ -395,8 +411,6 @@ class Dexarm:
         self.move_inward_to_target(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, 0, rotation_mode) 
         
         time.sleep(5)
-        #self.move_inward_to_target(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, -40, rotation_mode)
-        #To do change this to work with pipette hieght adjustment
     
 
 
