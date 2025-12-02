@@ -24,7 +24,7 @@ def rel_path(path):
 
 class RobotWorker(QThread):
     progress = pyqtSignal(str)
-    steps = ["MOVE_TO_XY_SAMPLE_COORD"]
+    steps = ["TIP_PICKUP", "SOLVENT_PICKUP", "MOVE_TO_XY_SAMPLE_COORD", "SAMPLE_DROPOFF", "TIP_DISPOSAL"]
     #"TIP_PICKUP", "SOLVENT_PICKUP", "MOVE_TO_XY_SAMPLE_COORD", "MOVE_DOWN_TO_SAMPLE_COORD", "SAMPLE_DROPOFF", "TIP_DISPOSAL"
 
     def __init__(self, sample_mode, main_window, curr_tip=1, max_tip_num=6, curr_vial=1, max_vial_num=3, use_robot_simulator=False, use_simulated_sample=False):
@@ -146,10 +146,17 @@ class RobotWorker(QThread):
                                 return
                             
                         # ********* TODO: ADD FUNC TO MOVE TO sample XY location (Breanna) ***************
-                        for i in range (0, len(self.muscle_pts)):
-                            self.dexarm.move_to_point_position(self.muscle_pts[i][0], self.muscle_pts[i][1])
-                        for i in range (0, len(self.marbling_pts)):
-                            self.dexarm.move_to_point_position(self.marbling_pts[i][0], self.marbling_pts[i][1])
+                        ## temporary adjustment for data measurement
+                        current_pipette_tip_points = self.sample_list[num_samples_collected - 1]
+                        for i in range(0, len(current_pipette_tip_points)):
+                            self.dexarm.move_to_point_position(current_pipette_tip_points[i][0], current_pipette_tip_points[i][1])
+                            self.dexarm.move_down_meat(self.ser_micro)
+                        # for i in range (0, len(self.muscle_pts)):
+                        #     self.dexarm.move_to_point_position(self.muscle_pts[i][0], self.muscle_pts[i][1])
+                        #     self.dexarm.move_down_meat(self.ser_micro)
+                        # for i in range (0, len(self.marbling_pts)):
+                        #     self.dexarm.move_to_point_position(self.marbling_pts[i][0], self.marbling_pts[i][1])
+                        #     self.dexarm.move_down_meat(self.ser_micro)
                         # self.dexarm.move_to_point_position(self.muscle_pts[0][0],self.muscle_pts[0][1])
 
                             
@@ -182,7 +189,7 @@ class RobotWorker(QThread):
                 self.last_completed_step = step
 
             # After collecting sample, go home
-            #self.dexarm.go_home()
+            self.dexarm.go_new_home()
 
         self.complete_success = True
         self.finish()
@@ -213,7 +220,7 @@ class RobotWorker(QThread):
         if not self.use_robot_simulator:
             photograph_offset_y = 30
             photograph_offset_z = 110
-            self.dexarm.go_home()
+            self.dexarm.go_new_home()
             self.dexarm.move_to_photograph_position(photograph_offset_y, photograph_offset_z)
             time.sleep(4)
 
@@ -259,7 +266,13 @@ class RobotWorker(QThread):
         # ----------------------------
         self.muscle_pts = self.main_window.selected_points["muscle_points"]
         self.marbling_pts = self.main_window.selected_points["marbling_points"]
-        self.total_num_samples = len(self.muscle_pts) + len(self.marbling_pts)
+
+        # Each entry is a list of coords ---> For one pipette tip
+        self.sample_list = [self.muscle_pts, self.marbling_pts]
+
+        # Edit later, need something in the GUI
+        # Total num samples = number of pipettes
+        self.total_num_samples = 2 #len(self.muscle_pts) + len(self.marbling_pts)
 
         # Check that total number of points is greater than 0 / Additional check of STOP interrupt
         if self.total_num_samples < 1 or self._stop_requested:

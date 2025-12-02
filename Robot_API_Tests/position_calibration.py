@@ -12,16 +12,6 @@ if __name__ == '__main__':
     #dexarm.move_to_photograph_position(30,110)
     #take_photo('Pixel Distance Photo.png')
 
-    # Move to pixel position:
-    dexarm.move_to_point_position(1044, 693)
-    dexarm.move_down_meat(ser_micro)
-    y = input()
-    dexarm.move_to_point_position(159, 677)
-    dexarm.move_down_meat(ser_micro)
-    y = input()
-    dexarm.move_to_point_position(481, 1562)
-    dexarm.move_down_meat(ser_micro)
-
     # Find Pipette Tip Position
     print('Turn off dexarm and move to position above pipette tip')
     print('Turn on dexarm once you have positioned it above pipette tip')

@@ -8,7 +8,8 @@ class Dexarm:
     """
 
     #system maximum speed: 500mm/s or 30000 mm/min
-    y_home = 300 #DO NOT CHANGE
+    y_home = 300 #
+    z_home = 60 #
     photograph_offset = 30 #y offset (was -40)
 
 
@@ -407,11 +408,11 @@ class Dexarm:
             rotation_mode = 'CCW'
 
         print(f'Current Position: {self.get_current_position()}')
-        self.fast_move_to(0, self.y_home+self.photograph_offset, 20)
+        self.fast_move_to(0, self.y_home+self.photograph_offset, self.z_home)
         
         y_req = self.y_home + self.photograph_offset + pixel_move_y_mm
-        self.move_to(pixel_move_x_mm, y_req, 25)
-        time.sleep(5)
+        self.move_to(pixel_move_x_mm, y_req, self.z_home)
+        time.sleep(3)
         print(f'Position After Move: {self.get_current_position()}')
 
     def move_to_photograph_position(self, photo_y=photograph_offset, photo_z=150):
@@ -485,9 +486,9 @@ class Dexarm:
     def step_5_dispense_sample(self, vial_num):
         # 1 x 3
         pipette_pos = {
-            1: (-193.14, 136.7),
-            2: (-207.14, 136.7),
-            3: (-220.14, 136.7)
+            1: (-189.38, 138.7),
+            2: (-202.98, 138.7),
+            3: (-216.3, 138.7)
         }
 
         if vial_num < 1 or vial_num > 3:
@@ -543,11 +544,10 @@ class Dexarm:
         connect = True
         received_msg = ''  # Microcontroller will send a message when it detects disconnection
         step_size = 0.1  # step size at which robot moves down in z-direction
-        max_height = 45  # maximum height of a steak [mm]
-        z_pos = max_height  # tracking z position [mm]
+        z_pos = self.z_home  # tracking z position [mm] and storing max height for initial move
 
         # Quickly move to max height allowed above steak
-        self.fast_move_to(None, None, max_height)
+        self.fast_move_to(None, None, z_pos)
 
         # Ask microcontroller to start tracking contact detection
         ser_micro.flushInput()
@@ -563,7 +563,7 @@ class Dexarm:
             if received_msg == b'DISCONNECTED\r\n':
                 connect = False
                 print('Disconnected!')
-                time.sleep(5)  # Pause at position for 5 seconds
+                time.sleep(7)  # Pause at position for 5 seconds
                 self.move_to(None, curr_y + 20, z=z_pos + 20)
             else:
                 self.move_to(None, None, z=z_pos)
@@ -583,7 +583,10 @@ class Dexarm:
             x_curr, y_curr, z_curr, *_ = self.get_current_position()
             print(f'Target: {target}')
             print(f'Current: {[x_curr, y_curr, z_curr]}')
-            if (((abs(x_curr - target[0]) / target[0]) * 100 < 0.5 or target[0] == -999) and
-                    ((abs(y_curr - target[1]) / target[1]) * 100 < 0.5 or target[1] == -999) and
-                    ((abs(z_curr - target[2]) / target[2]) * 100 < 0.5) or target[2] is None):
+            if (((abs(x_curr - target[0]) / target[0]) * 100 < 0.5) and
+                    ((abs(y_curr - target[1]) / target[1]) * 100 < 0.5) and
+                    ((abs(z_curr - target[2]) / target[2]) * 100 < 0.5)):
                 target_reached = True
+
+    def go_new_home(self):
+        self.move_to(0,300,self.z_home)
