@@ -33,6 +33,7 @@ void disconnectCheck(){
   digitalWrite(voltageOut, HIGH);
   while (timeCheck < 3){
     sensorValue = analogRead(sensorPin);  // read analog voltage
+    // Serial.println("C");  // let python code know that the microcontroller is still reading a signal
     if (sensorValue == 0){
       timeCheck++;
       delay(100);

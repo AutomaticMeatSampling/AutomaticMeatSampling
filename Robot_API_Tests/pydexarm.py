@@ -425,37 +425,26 @@ class Dexarm:
         cup_z = 130.3
 
         self.fast_move_to(None, None, cup_z)
-        self.move_inward_to_target(cup_x, cup_y, cup_z, 'CW') #tell to move to z first
+        self.move_inward_to_target(cup_x, cup_y, cup_z, 'CW')  # tell to move to z first
 
-        # TODO: Add drop of code here:
-        time.sleep(5)
+        # Verify that robot has reached position before ejecting pipette
+        self.verify_movement([cup_x, cup_y, cup_z])
 
-    def move_to_drop_sample(self, sample_num):
-        # Move to grid (1 row x 3 columns) of vials. First vial is at top left
-
-        max_num = 3
-
-        vial_pos = {
-            1: (0, 0), # TODO: need to find actual values
-            2: (0, 0),
-            3: (0, 0)
-        }
-
-        if sample_num < 1 or sample_num > 3:
-            raise ValueError("sample_num must be between 1 and 3")
-        
-        pipette_height = 0
+        # Drop off code
+        time.sleep(1)
+        self.toggle_gpio_pin(18)
+        time.sleep(2)
 
     def move_to_pipette_tip(self, pipette_num):
         # Move to grid (3 rows X 2 columns) of pipettes. First pipette is at top left:
-        
+        pipette_1 = (307.09, 173.97)
         pipette_pos = {
-            1: (318.37, 177.74), # 1: (317.63, 175.58),
-            2: (0, 0), # TODO: need to find actual values
-            3: (0, 0),
-            4: (0, 0),
-            5: (0, 0),
-            6: (0, 0)
+            1: pipette_1,  # 1: (317.63, 175.58),
+            2: (pipette_1[0] + 11, pipette_1[1]),  # TODO: need to find actual values
+            3: (pipette_1[0] + 1, pipette_1[1] + 13),
+            4: (pipette_1[0] + 11, pipette_1[1] + 10),
+            5: (pipette_1[0], pipette_1[1] + 23),
+            6: (pipette_1[0] + 9, pipette_1[1] + 23)
         }
         
         # Initial movement to not hit anything
@@ -476,13 +465,19 @@ class Dexarm:
 
     def step_3_move_to_solvent(self):
         # Assumes starts at pipette tip pick up
+        solvent_z = 75 # z position for robot to aspirate from solvent
         solvent_1 = (262.16, 262.16, 120)
         self.fast_move_to(None, None, solvent_1[2])
         self.move_inward_to_target(solvent_1[0], solvent_1[1], solvent_1[2], 'CCW')
-        self.fast_move_to(None, None, 75)
+        self.fast_move_to(None, None, solvent_z)
 
-        # Replace with actual suction code
-        time.sleep(5)
+        # Verify that robot has reached position before ejecting pipette
+        self.verify_movement([solvent_1[0], solvent_1[1], solvent_z])
+
+        # Aspiration
+        time.sleep(1)
+        self.toggle_gpio_pin(17)
+        time.sleep(2)
 
         self.fast_move_to(None, None, 120)
         self.move_inward_to_target(0, 300, 120, 'CCW')
@@ -490,9 +485,9 @@ class Dexarm:
     def step_5_dispense_sample(self, vial_num):
         # 1 x 3
         pipette_pos = {
-            1: (-197.54, 137.23),
-            2: (0, 0), # TODO: need to find actual values
-            3: (0, 0)
+            1: (-193.14, 136.7),
+            2: (-207.14, 136.7),
+            3: (-220.14, 136.7)
         }
 
         if vial_num < 1 or vial_num > 3:
@@ -503,12 +498,18 @@ class Dexarm:
         self.move_inward_to_target(pipette_pos[vial_num][0], pipette_pos[vial_num][1], 45, 'CCW')
 
         pipette_height = 45
-        while pipette_height > 25:
+        final_pipette_height = 25
+        while pipette_height > final_pipette_height:
             pipette_height -= 5
-            self.fast_move_to(None, None, 25)
-        
+            self.fast_move_to(None, None, final_pipette_height)
+
+        # Verify that robot has reached position before ejecting pipette
+        self.verify_movement([pipette_pos[vial_num][0], pipette_pos[vial_num][1], final_pipette_height])
+
         # Add dispense code here
-        time.sleep(5)
+        time.sleep(1)
+        self.toggle_gpio_pin(17)
+        time.sleep(2)
 
         # Lift up
         self.fast_move_to(None, None, 45)
@@ -522,12 +523,12 @@ class Dexarm:
         # Example how to toggle pin: 
         # Leftmost Pin: 17
         # Right Pin: 18
-        # dexarm.toggle_gpio_pin(18) for ejecting pipette tip
-        # dexarm.toggle_gpio_pin(17) for aspirating pipette
+        # self.toggle_gpio_pin(18) for ejecting pipette tip
+        # self.toggle_gpio_pin(17) for aspirating pipette
 
         cmd_high = f"M42 P{pin_number} S{255}\r"
         self._send_cmd(cmd_high)
-        time.sleep(0.1)
+        time.sleep(1)
         cmd_low = f"M42 P{pin_number} S{0}\r"
         self._send_cmd(cmd_low)
 
@@ -542,7 +543,7 @@ class Dexarm:
         connect = True
         received_msg = ''  # Microcontroller will send a message when it detects disconnection
         step_size = 0.1  # step size at which robot moves down in z-direction
-        max_height = 25 #43  # maximum height of a steak [mm]
+        max_height = 45  # maximum height of a steak [mm]
         z_pos = max_height  # tracking z position [mm]
 
         # Quickly move to max height allowed above steak
@@ -552,14 +553,37 @@ class Dexarm:
         ser_micro.flushInput()
         ser_micro.write(bytes('D', 'utf-8'))
 
+        curr_x, curr_y, curr_z, *_ = self.get_current_position()
+
         # Check contact detection while moving robot down by step_size
-        while connect:
+        while connect and ser_micro.is_open:
             received_msg = ser_micro.readline()
             ser_micro.flushInput()
-            self.move_to(None, None, z=z_pos)
-            z_pos = z_pos - step_size
+
             if received_msg == b'DISCONNECTED\r\n':
                 connect = False
                 print('Disconnected!')
                 time.sleep(5)  # Pause at position for 5 seconds
-                self.move_to(None, None, z=z_pos)  # z = z_pos + 20
+                self.move_to(None, curr_y + 20, z=z_pos + 20)
+            else:
+                self.move_to(None, None, z=z_pos)
+                curr_x, curr_y, curr_z, *_ = self.get_current_position()
+                z_pos = z_pos - step_size
+
+    def verify_movement(self, target):
+        """
+            Check if the current position of the robot matches the target position
+            It will block the program until the current position is within 0.5% of target
+
+            Args:
+            target (list): [x_target, y_target, z_target]
+        """
+        target_reached = False
+        while not target_reached:
+            x_curr, y_curr, z_curr, *_ = self.get_current_position()
+            print(f'Target: {target}')
+            print(f'Current: {[x_curr, y_curr, z_curr]}')
+            if (((abs(x_curr - target[0]) / target[0]) * 100 < 0.5 or target[0] == -999) and
+                    ((abs(y_curr - target[1]) / target[1]) * 100 < 0.5 or target[1] == -999) and
+                    ((abs(z_curr - target[2]) / target[2]) * 100 < 0.5) or target[2] is None):
+                target_reached = True
