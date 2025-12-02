@@ -42,6 +42,8 @@ class CoordSelectionWidget(QWidget):
         # Widgets
         self.label = QLabel()
         self.label.setPixmap(QPixmap.fromImage(self.qimg))
+        self.label.mousePressEvent = self.image_mouse_press
+        self.label.setFocusPolicy(Qt.StrongFocus)
 
         # Buttons
         self.continue_btn = QPushButton("Continue")
@@ -78,18 +80,32 @@ class CoordSelectionWidget(QWidget):
         painter.end()
         self.label.setPixmap(pix)
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            x, y = event.pos().x(), event.pos().y()
-            if self.current_type == 'muscle':
-                if len(self.muscle_pts) < self.max_muscle:
-                    self.muscle_pts.append((x, y))
-                    self.last_type = "muscle"
-            else:
-                if len(self.marbling_pts) < self.max_marbling:
-                    self.marbling_pts.append((x, y))
-                    self.last_type = "marbling"
-            self.update_image()
+    def image_mouse_press(self, event):
+        if event.button() != Qt.LeftButton: # Only accept left-clicks
+            return
+
+        if not self.label.hasFocus(): # Must be focused
+            return
+
+        # Coordinates relative to the label (correct!)
+        x, y = event.pos().x(), event.pos().y()
+
+        # Reject clicks outside displayed image area
+        if x < 0 or y < 0 or x >= self.display_img.shape[1] or y >= self.display_img.shape[0]:
+            return
+
+        # Store point
+        if self.current_type == 'muscle':
+            if len(self.muscle_pts) < self.max_muscle:
+                self.muscle_pts.append((x, y))
+                self.last_type = "muscle"
+        else:
+            if len(self.marbling_pts) < self.max_marbling:
+                self.marbling_pts.append((x, y))
+                self.last_type = "marbling"
+
+        # Update drawing
+        self.update_image()
 
     def on_undo(self):
         if hasattr(self, "last_type"):
@@ -101,7 +117,7 @@ class CoordSelectionWidget(QWidget):
 
     def on_switch_type(self):
         if self.current_type == 'muscle':
-            self.current_type == 'marbling'
+            self.current_type = 'marbling'
             self.type_btn.setText("Switch to Muscle")
         else:
             self.current_type = 'muscle'
