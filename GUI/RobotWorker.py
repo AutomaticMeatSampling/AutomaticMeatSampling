@@ -67,7 +67,7 @@ class RobotWorker(QThread):
         if not self.use_robot_simulator:
             
             if os.name == "nt":#Windows
-                self.dexarm = Dexarm(port="COM3")
+                self.dexarm = Dexarm(port="COM6")
                 self.ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
             else: #Mac/Linux
                 self.dexarm = Dexarm(port="/dev/cu.usbmodem207B396A36311")#COM3
@@ -146,10 +146,12 @@ class RobotWorker(QThread):
                                 return
                             
                         # ********* TODO: ADD FUNC TO MOVE TO sample XY location (Breanna) ***************
-                        
-                        self.dexarm.move_to_point_position(self.muscle_pts[0][0],self.muscle_pts[0][1])
-                        
-                        #self.dexarm.move_to(0, 187, 45) # Temporary test location
+                        for i in range (0, len(self.muscle_pts)):
+                            self.dexarm.move_to_point_position(self.muscle_pts[i][0], self.muscle_pts[i][1])
+                        for i in range (0, len(self.marbling_pts)):
+                            self.dexarm.move_to_point_position(self.marbling_pts[i][0], self.marbling_pts[i][1])
+                        # self.dexarm.move_to_point_position(self.muscle_pts[0][0],self.muscle_pts[0][1])
+
                             
                     # ----------------------------------------
                     # STEP 4: Move downward to sample and hold
@@ -213,7 +215,7 @@ class RobotWorker(QThread):
             photograph_offset_z = 110
             self.dexarm.go_home()
             self.dexarm.move_to_photograph_position(photograph_offset_y, photograph_offset_z)
-
+            time.sleep(4)
 
             #move_to(0, self.dexarm.y_home+photograph_offset_y, photograph_offset_z)
 

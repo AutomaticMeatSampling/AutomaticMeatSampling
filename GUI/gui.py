@@ -1,5 +1,6 @@
 import sys
 import time
+import torch
 from ImageWorker import ImageWorker
 from RobotWorker import RobotWorker
 from threading import Event

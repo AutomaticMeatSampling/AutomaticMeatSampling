@@ -1,13 +1,26 @@
 from pydexarm import Dexarm
 import time
 import cv2
-# from takepicture import take_photo
+from takepicture import take_photo
 import serial
 import serial.tools.list_ports
 
 if __name__ == '__main__':
     dexarm = Dexarm(port="COM6")
     ser_micro = serial.Serial(port='COM4', baudrate=115200, timeout=0.1)
+    #dexarm.go_home()
+    #dexarm.move_to_photograph_position(30,110)
+    #take_photo('Pixel Distance Photo.png')
+
+    # Move to pixel position:
+    dexarm.move_to_point_position(1044, 693)
+    dexarm.move_down_meat(ser_micro)
+    y = input()
+    dexarm.move_to_point_position(159, 677)
+    dexarm.move_down_meat(ser_micro)
+    y = input()
+    dexarm.move_to_point_position(481, 1562)
+    dexarm.move_down_meat(ser_micro)
 
     # Find Pipette Tip Position
     print('Turn off dexarm and move to position above pipette tip')
