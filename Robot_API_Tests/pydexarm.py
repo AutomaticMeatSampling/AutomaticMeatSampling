@@ -359,27 +359,11 @@ class Dexarm:
         CAMERA_WIDTH_PX = 3264 #old: 2372, new: 3264
         CAMERA_HEIGHT_PX = 2448#old: 1582, new: 2448
 
-        # grid_pixels_x = 734#old: 55
-        # grid_pixels_y = 556#old: 55
-        #grid_inches = 0.25 #inches
-        #need to split grid inches into x and y
-
-        INCHES_TO_MM = 25.4 #true constant
-
-        grid_inches_x = 127.75 #inches
-        grid_inches_y = 95.71 #inches
-        #need to split grid inches into x and y
-        
-        # grid_mm_x = grid_inches_x*INCHES_TO_MM
-        # grid_mm_y = grid_inches_y*INCHES_TO_MM
-        grid_pixels_x = 67
+        grid_pixels_x = 68
         grid_pixels_y = 68
 
         grid_mm_x = 5
         grid_mm_y = 5
-        #need to split grid inches into x and y
-        
-        #grid_mm = grid_inches*INCHES_TO_MM
 
         x_camera_center_offset_pixel = CAMERA_WIDTH_PX/2
         y_camera_center_offset_pixel = CAMERA_HEIGHT_PX/2
@@ -387,21 +371,35 @@ class Dexarm:
         x_mm_per_pixel = grid_mm_x/grid_pixels_x
         y_mm_per_pixel = grid_mm_y/grid_pixels_y
 
-        camera_to_robot_arm_center_y = 76.04 # mm
+        camera_to_robot_arm_center_y = 77.55 #78 # mm
 
         robot_arm_center_pixel_move_x_mm = ((dot_x_pixel - x_camera_center_offset_pixel)*x_mm_per_pixel)# + pipette_offset_x
         robot_arm_center_pixel_move_y_mm = -((dot_y_pixel - y_camera_center_offset_pixel)*y_mm_per_pixel) - camera_to_robot_arm_center_y# - pipette_offset_y
         print(f'Robot Arm (x,y): {robot_arm_center_pixel_move_x_mm}, {robot_arm_center_pixel_move_y_mm}')
         # Need to calculate this based on offset from center to pipette
-        pipette_tip_to_robot_arm_center_offset = 13.26
+        pipette_tip_to_robot_arm_center_offset = 13
+
+        y_req = self.y_home + self.photograph_offset + robot_arm_center_pixel_move_y_mm
         
         # Calculate x and y offset based on angle of robot arm center coords (centered around (0, 5)) (use robot_arm_center_pixel_move_x_mm and robot_arm_center_pixel_move_y_mm)
-        angle = math.atan2(robot_arm_center_pixel_move_x_mm, robot_arm_center_pixel_move_y_mm)
+        angle = abs(math.atan2(robot_arm_center_pixel_move_x_mm, y_req - 5))
+
+        print(angle*180/math.pi)
         pipette_offset_y = pipette_tip_to_robot_arm_center_offset * math.cos(angle)
         pipette_offset_x = pipette_tip_to_robot_arm_center_offset * math.sin(angle)
 
-        pixel_move_x_mm = robot_arm_center_pixel_move_x_mm - pipette_offset_x
-        pixel_move_y_mm = robot_arm_center_pixel_move_y_mm - pipette_offset_y
+        print(f"Pipette Offset: ({pipette_offset_x},{pipette_offset_y})")
+
+        if dot_x_pixel < x_camera_center_offset_pixel: # Right side
+            pixel_move_x_mm = robot_arm_center_pixel_move_x_mm - abs(pipette_offset_x)
+            
+        else: # Left side
+            pixel_move_x_mm = robot_arm_center_pixel_move_x_mm + abs(pipette_offset_x)
+        pixel_move_y_mm = robot_arm_center_pixel_move_y_mm + abs(pipette_offset_y)
+        
+
+        # pixel_move_x_mm = robot_arm_center_pixel_move_x_mm #- pipette_offset_x
+        
         print(f'Pixel Move: ({pixel_move_x_mm},{pixel_move_y_mm})')
         if dot_x_pixel > x_camera_center_offset_pixel:
             rotation_mode = 'CW'
@@ -410,23 +408,11 @@ class Dexarm:
 
         print(f'Current Position: {self.get_current_position()}')
         self.fast_move_to(0, self.y_home+self.photograph_offset, 20)
-        # self.move_inward_to_target(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, 0, rotation_mode)
-        # self.move_to(1.083*pixel_move_x_mm + math.copysign(9.25, pixel_move_x_mm), self.y_home + self.photograph_offset + pixel_move_y_mm, 25)
-        # self.move_to(pixel_move_x_mm, self.y_home + self.photograph_offset + pixel_move_y_mm, 25)
+        
         y_req = self.y_home + self.photograph_offset + pixel_move_y_mm
-        self.move_to(-8.695 + 1.086*pixel_move_x_mm + 0.034743*pixel_move_y_mm, 2.852 - 0.07134*pixel_move_x_mm + 1.019*y_req, 25)
+        self.move_to(pixel_move_x_mm, y_req, 25)
         time.sleep(5)
         print(f'Position After Move: {self.get_current_position()}')
-
-
-
-
-
-
-
-
-
-
 
     def move_to_photograph_position(self, photo_y=photograph_offset, photo_z=150):
         # Move to photographing position
