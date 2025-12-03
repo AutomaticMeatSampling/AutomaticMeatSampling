@@ -73,7 +73,11 @@ class RobotWorker(QThread):
                 self.dexarm = Dexarm(port="/dev/cu.usbmodem207B396A36311")#COM3
                 self.ser_micro = serial.Serial(port='/dev/cu.usbmodem142101', baudrate=115200, timeout=0.1)
 
+            self.dexarm._send_cmd("M42 P17 M1\r")
+            self.dexarm._send_cmd("M42 P18 M1\r")
+
     def run(self):
+        self.start_time = time.time()
         self.progress.emit("ROBOT_START")
         print(f"Running robot worker process with sample mode: {self.sample_mode}")
 
@@ -206,6 +210,8 @@ class RobotWorker(QThread):
             self.dexarm.close()
         self.ser_micro.close()
 
+        print("Total time taken (s): ", time.time() - self.start_time)
+
     
     def stop(self):
         # Set flag to be handled by main run function
@@ -222,7 +228,7 @@ class RobotWorker(QThread):
             photograph_offset_z = 110
             self.dexarm.go_new_home()
             self.dexarm.move_to_photograph_position(photograph_offset_y, photograph_offset_z)
-            time.sleep(4)
+            self.dexarm.verify_movement([0, self.dexarm.y_home+photograph_offset_y, photograph_offset_z])
 
             #move_to(0, self.dexarm.y_home+photograph_offset_y, photograph_offset_z)
 
@@ -249,7 +255,7 @@ class RobotWorker(QThread):
     def wait_for_coord_results(self):
         """ Wait for results for specific timeout amount """
 
-        timeout = 10 if self.sample_mode == "Automatic" else 100
+        timeout = 35 if self.sample_mode == "Automatic" else 100
         if not self.main_window.image_coords_ready_event.wait(timeout=timeout):
             self.progress.emit("Error: Image coord result not received in time")
             return -1
@@ -264,15 +270,22 @@ class RobotWorker(QThread):
         # ----------------------------
         # Parse selected sample points
         # ----------------------------
-        self.muscle_pts = self.main_window.selected_points["muscle_points"]
-        self.marbling_pts = self.main_window.selected_points["marbling_points"]
+        self.muscle_pts = list(self.main_window.selected_points["muscle_points"])
+        self.marbling_pts = list(self.main_window.selected_points["marbling_points"])
 
-        # Each entry is a list of coords ---> For one pipette tip
-        self.sample_list = [self.muscle_pts, self.marbling_pts]
+        print("Muscle Points: ", self.muscle_pts)
+        print("Marbling Points: ", self.marbling_pts)
+
+        # Each entry is a list of img pixel coords ---> For one pipette tip
+        self.sample_list = []
+        if len(self.muscle_pts) > 0:
+            self.sample_list.append(self.muscle_pts)
+        if len(self.marbling_pts) > 0:
+            self.sample_list.append(self.marbling_pts)
 
         # Edit later, need something in the GUI
         # Total num samples = number of pipettes
-        self.total_num_samples = 2 #len(self.muscle_pts) + len(self.marbling_pts)
+        self.total_num_samples = len(self.sample_list) #len(self.muscle_pts) + len(self.marbling_pts)
 
         # Check that total number of points is greater than 0 / Additional check of STOP interrupt
         if self.total_num_samples < 1 or self._stop_requested:

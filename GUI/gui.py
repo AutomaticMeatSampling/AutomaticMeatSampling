@@ -159,11 +159,9 @@ class MainWindow(QWidget):
             self.update_status("Starting sample collection...")
         elif msg == "ROBOT_STOP_SUCCESS":
             self.update_status("Sucessfully completed process.")
-            time.sleep(2)
             # self.reset_gui()
         elif msg == "ROBOT_STOP":
             self.update_status("Stopped robot process.")
-            time.sleep(2)
             # self.reset_gui()
         elif msg == "START_AUTOMATIC_POINT_SELECTION":
             # Create a new instance of ImageWorker
@@ -172,7 +170,7 @@ class MainWindow(QWidget):
             self.imageWorker.result_ready.connect(self.on_coord_result)
             self.imageWorker.start()
         elif msg == "START_MANUAL_POINT_SELECTION":
-            self.coord_selector = CoordSelectionWidget()
+            self.coord_selector = CoordSelectionWidget(ImageWorker.max_num_marbling, ImageWorker.max_num_marbling)
             self.coord_selector.points_selected.connect(self.on_coord_result)
             self.coord_selector.show()
         else:

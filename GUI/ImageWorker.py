@@ -12,8 +12,8 @@ import segment_ld
 class ImageWorker(QThread):
     result_ready = pyqtSignal(object)
     img_path = "image_processing_img.png"
-    max_num_muscle = 3
-    max_num_marbling = 3
+    max_num_muscle = 10
+    max_num_marbling = 10
 
     def __init__(self, num_muscle_pts, num_marbling_pts):
         super().__init__()

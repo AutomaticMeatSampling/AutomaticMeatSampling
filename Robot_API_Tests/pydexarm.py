@@ -9,7 +9,7 @@ class Dexarm:
 
     #system maximum speed: 500mm/s or 30000 mm/min
     y_home = 300 #
-    z_home = 60 #
+    z_home = 45 #
     photograph_offset = 30 #y offset (was -40)
 
 
@@ -412,7 +412,7 @@ class Dexarm:
         
         y_req = self.y_home + self.photograph_offset + pixel_move_y_mm
         self.move_to(pixel_move_x_mm, y_req, self.z_home)
-        time.sleep(3)
+        time.sleep(2)
         print(f'Position After Move: {self.get_current_position()}')
 
     def move_to_photograph_position(self, photo_y=photograph_offset, photo_z=150):
@@ -432,13 +432,13 @@ class Dexarm:
         self.verify_movement([cup_x, cup_y, cup_z])
 
         # Drop off code
-        time.sleep(1)
+        time.sleep(0.5)
         self.toggle_gpio_pin(18)
-        time.sleep(2)
+        time.sleep(0.5)
 
     def move_to_pipette_tip(self, pipette_num):
         # Move to grid (3 rows X 2 columns) of pipettes. First pipette is at top left:
-        pipette_1 = (307.09, 173.97)
+        pipette_1 = (308.19, 175.22)
         pipette_pos = {
             1: pipette_1,  # 1: (317.63, 175.58),
             2: (pipette_1[0] + 11, pipette_1[1]),  # TODO: need to find actual values
@@ -476,7 +476,6 @@ class Dexarm:
         self.verify_movement([solvent_1[0], solvent_1[1], solvent_z])
 
         # Aspiration
-        time.sleep(1)
         self.toggle_gpio_pin(17)
         time.sleep(2)
 
@@ -486,21 +485,21 @@ class Dexarm:
     def step_5_dispense_sample(self, vial_num):
         # 1 x 3
         pipette_pos = {
-            1: (-189.38, 138.7),
-            2: (-202.98, 138.7),
+            1: (-192.28, 139),
+            2: (-204.88, 136.87),
             3: (-216.3, 138.7)
         }
 
         if vial_num < 1 or vial_num > 3:
             raise ValueError("vial_num must be between 1 and 3")
         
-        self.move_to(None, None, 50)
+        self.move_to(None, None, self.z_home)
         
         self.move_inward_to_target(pipette_pos[vial_num][0], pipette_pos[vial_num][1], 45, 'CCW')
 
         pipette_height = 45
-        final_pipette_height = 25
-        while pipette_height > final_pipette_height:
+        final_pipette_height = 35
+        while pipette_height >= final_pipette_height:
             pipette_height -= 5
             self.fast_move_to(None, None, final_pipette_height)
 
@@ -508,7 +507,6 @@ class Dexarm:
         self.verify_movement([pipette_pos[vial_num][0], pipette_pos[vial_num][1], final_pipette_height])
 
         # Add dispense code here
-        time.sleep(1)
         self.toggle_gpio_pin(17)
         time.sleep(2)
 
@@ -563,7 +561,7 @@ class Dexarm:
             if received_msg == b'DISCONNECTED\r\n':
                 connect = False
                 print('Disconnected!')
-                time.sleep(7)  # Pause at position for 5 seconds
+                time.sleep(5)  # Pause at position for 5 seconds (Collecting Sample)
                 self.move_to(None, curr_y + 20, z=z_pos + 20)
             else:
                 self.move_to(None, None, z=z_pos)
@@ -572,21 +570,27 @@ class Dexarm:
 
     def verify_movement(self, target):
         """
-            Check if the current position of the robot matches the target position
-            It will block the program until the current position is within 0.5% of target
-
-            Args:
-            target (list): [x_target, y_target, z_target]
+        Blocks until current position is within 0.5% of target (or an absolute tolerance if target = 0)
         """
-        target_reached = False
-        while not target_reached:
+        rel_tol = 0.005    # 0.5%
+        abs_tol = 0.5      # you can choose appropriate mm tolerance
+
+        while True:
             x_curr, y_curr, z_curr, *_ = self.get_current_position()
-            print(f'Target: {target}')
-            print(f'Current: {[x_curr, y_curr, z_curr]}')
-            if (((abs(x_curr - target[0]) / target[0]) * 100 < 0.5) and
-                    ((abs(y_curr - target[1]) / target[1]) * 100 < 0.5) and
-                    ((abs(z_curr - target[2]) / target[2]) * 100 < 0.5)):
-                target_reached = True
+            print(f"Verifying movement. Current position: ({x_curr}, {y_curr}, {z_curr}) Target: {target}")
+
+            for curr, tgt in zip((x_curr, y_curr, z_curr), target):
+                if tgt == 0:
+                    # Use absolute tolerance
+                    if abs(curr - tgt) > abs_tol:
+                        break
+                else:
+                    # Use relative tolerance
+                    if abs(curr - tgt) / abs(tgt) > rel_tol:
+                        break
+            else:
+                # loop did not break → all axes within tolerance
+                return
 
     def go_new_home(self):
         self.move_to(0,300,self.z_home)
